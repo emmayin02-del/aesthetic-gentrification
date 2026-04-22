@@ -1,0 +1,39 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;font-family:'JetBrains Mono',monospace;padding:20px}
+.cities{display:flex;flex-direction:column;gap:14px}
+.city-row{display:flex;gap:10px;align-items:stretch}
+.city-label{width:90px;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#5a5868;flex-shrink:0}
+.hoods{display:flex;gap:10px;flex:1}
+.hood{flex:1;border-radius:6px;overflow:hidden}
+.hood-color{height:56px}
+.hood-info{padding:8px 10px;background:#13131a;border:1px solid #2a2a3a;border-top:none}
+.hood-name{font-size:10px;color:#e8e6e3;letter-spacing:0.5px}
+.hood-hex{font-size:9px;color:#5a5868;margin-top:2px}
+</style></head><body>
+<div class="cities">
+  <div class="city-row">
+    <div class="city-label">Amsterdam</div>
+    <div class="hoods">
+      <div class="hood"><div class="hood-color" style="background:#d4886a"></div><div class="hood-info"><div class="hood-name">De Pijp</div><div class="hood-hex">#d4886a</div></div></div>
+      <div class="hood"><div class="hood-color" style="background:#d4a76a"></div><div class="hood-info"><div class="hood-name">Jordaan</div><div class="hood-hex">#d4a76a</div></div></div>
+    </div>
+  </div>
+  <div class="city-row">
+    <div class="city-label">London</div>
+    <div class="hoods">
+      <div class="hood"><div class="hood-color" style="background:#7aa3c8"></div><div class="hood-info"><div class="hood-name">Shoreditch</div><div class="hood-hex">#7aa3c8</div></div></div>
+      <div class="hood"><div class="hood-color" style="background:#6a98b8"></div><div class="hood-info"><div class="hood-name">Hackney</div><div class="hood-hex">#6a98b8</div></div></div>
+    </div>
+  </div>
+  <div class="city-row">
+    <div class="city-label">Tokyo</div>
+    <div class="hoods">
+      <div class="hood"><div class="hood-color" style="background:#a8c87a"></div><div class="hood-info"><div class="hood-name">Shimokitazawa</div><div class="hood-hex">#a8c87a</div></div></div>
+      <div class="hood"><div class="hood-color" style="background:#7ac896"></div><div class="hood-info"><div class="hood-name">Kiyosumi-Shirakawa</div><div class="hood-hex">#7ac896</div></div></div>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;padding:24px;font-family:'JetBrains Mono',monospace}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.pill{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border:1px solid;border-radius:999px;background:transparent;cursor:pointer;transition:all 0.2s ease}
+.default{color:#8a8898;border-color:#2a2a3a}
+.hover{color:#e8e6e3;border-color:#8a8898}
+.active{color:#c8a882;border-color:#c8a882;background:rgba(200,168,130,0.15)}
+.active-hood{color:#d4886a;border-color:#d4886a;background:rgba(212,136,106,0.15)}
+.label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#5a5868;margin-bottom:8px}
+</style></head><body>
+<div class="label">Filter pill states</div>
+<div class="row">
+  <div class="pill default">All platforms</div>
+  <div class="pill hover">Instagram</div>
+  <div class="pill active">Airbnb</div>
+</div>
+<div class="label">Neighborhood filters</div>
+<div class="row">
+  <div class="pill active-hood">De Pijp</div>
+  <div class="pill" style="color:#d4a76a;border-color:#d4a76a;background:rgba(212,167,106,0.15)">Jordaan</div>
+  <div class="pill" style="color:#7aa3c8;border-color:#7aa3c8;background:rgba(122,163,200,0.15)">Shoreditch</div>
+  <div class="pill" style="color:#6a98b8;border-color:#6a98b8;background:rgba(106,152,184,0.15)">Hackney</div>
+  <div class="pill" style="color:#a8c87a;border-color:#a8c87a;background:rgba(168,200,122,0.15)">Shimokitazawa</div>
+  <div class="pill default">Kiyosumi-Shirakawa</div>
+</div>
+</body></html>

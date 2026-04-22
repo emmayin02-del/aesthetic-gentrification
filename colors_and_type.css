@@ -1,0 +1,189 @@
+/* ══════════════════════════════════════════════════════
+   Aesthetic Cartography — Design Tokens
+   Master Thesis Visualization, Media Studies UvA 2026
+   ══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
+
+:root {
+
+  /* ── BASE COLORS ── */
+  --bg:           #0a0a0f;   /* page background, near-black w/ blue cast */
+  --surface:      #13131a;   /* primary container / card background */
+  --surface-2:    #1a1a24;   /* elevated surface — tooltips, nested */
+  --border:       #2a2a3a;   /* separator lines, always 1px */
+
+  /* ── TEXT ── */
+  --text:         #e8e6e3;   /* primary — warm off-white */
+  --text-dim:     #8a8898;   /* secondary — captions, sub-labels */
+  --text-muted:   #5a5868;   /* tertiary — micro labels, metadata */
+
+  /* ── ACCENT ── */
+  --accent:       #c8a882;   /* warm amber/sand — active states, display nums, italic type */
+  --accent-dim:   rgba(200, 168, 130, 0.15); /* active filter background */
+  --accent-glow:  rgba(200, 168, 130, 0.06); /* hero background radial glow */
+
+  /* ── NEIGHBORHOOD PALETTE ── */
+  /* Amsterdam */
+  --c-de-pijp:              #d4886a;   /* terracotta */
+  --c-jordaan:              #d4a76a;   /* golden clay */
+  /* London */
+  --c-shoreditch:           #7aa3c8;   /* steel blue */
+  --c-hackney:              #6a98b8;   /* slate blue */
+  /* Tokyo */
+  --c-shimokitazawa:        #a8c87a;   /* sage green */
+  --c-kiyosumi-shirakawa:   #7ac896;   /* mint teal */
+
+  /* ── PLATFORM ── */
+  --c-instagram: rgba(255, 255, 255, 0.8);   /* bright point */
+  --c-airbnb:    rgba(255, 255, 255, 0.35);  /* dim point */
+
+  /* ── TYPOGRAPHY — FAMILIES ── */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Mono', monospace;
+
+  /* ── TYPOGRAPHY — SCALE ── */
+  --text-hero:    clamp(2.8rem, 6vw, 5.5rem);
+  --text-stat:    2.2rem;
+  --text-h2:      2rem;
+  --text-h3:      1.3rem;
+  --text-lg:      1.05rem;
+  --text-base:    0.95rem;
+  --text-sm:      12px;
+  --text-xs:      11px;
+  --text-xxs:     10px;
+
+  /* ── TYPOGRAPHY — LEADING ── */
+  --leading-tight:   1.08;
+  --leading-snug:    1.35;
+  --leading-normal:  1.6;
+  --leading-relaxed: 1.65;
+
+  /* ── TYPOGRAPHY — TRACKING ── */
+  --tracking-hero:  normal;
+  --tracking-label: 1px;
+  --tracking-micro: 2px;
+  --tracking-eyebrow: 4px;
+
+  /* ── SPACING ── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-18: 72px;
+  --space-24: 96px;
+
+  /* ── BORDER RADIUS ── */
+  --radius-sm:   4px;
+  --radius-md:   6px;   /* tooltips */
+  --radius-lg:   8px;   /* viz containers */
+  --radius-pill: 999px; /* filter pills */
+
+  /* ── BORDERS ── */
+  --border-default: 1px solid var(--border);
+
+  /* ── LAYOUT ── */
+  --page-pad-hero:     8vw;
+  --page-pad-section:  4vw;
+  --section-max-width: 720px;
+  --viz-min-height:    500px;
+
+  /* ── TRANSITIONS ── */
+  --transition-fast:   0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow:   0.8s ease;
+
+  /* ── SHADOWS / BLUR ── */
+  --blur-nav:  blur(12px);
+  --nav-bg:    rgba(10, 10, 15, 0.92);
+}
+
+/* ── SEMANTIC ELEMENT DEFAULTS ── */
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+h1, .h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+h2, .h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 400;
+  line-height: var(--leading-snug);
+}
+
+h3, .h3 {
+  font-family: var(--font-body);
+  font-size: var(--text-h3);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+}
+
+p, .body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-dim);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xxs);
+  font-weight: 400;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--text-stat);
+  color: var(--accent);
+}
+
+.stat-label {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}

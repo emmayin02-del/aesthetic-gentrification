@@ -1,0 +1,24 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=DM+Sans:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;font-family:'DM Sans',sans-serif;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.swatch{border-radius:6px;overflow:hidden}
+.color-block{height:64px}
+.info{padding:10px 12px;background:#13131a;border:1px solid #2a2a3a;border-top:none;border-radius:0 0 6px 6px}
+.name{font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8e6e3;letter-spacing:1px}
+.hex{font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a5868;margin-top:2px}
+.desc{font-size:10px;color:#5a5868;margin-top:3px;line-height:1.4}
+</style></head><body>
+<div class="grid">
+  <div class="swatch"><div class="color-block" style="background:#0a0a0f;border:1px solid #2a2a3a"></div><div class="info"><div class="name">--bg</div><div class="hex">#0a0a0f</div><div class="desc">Page background</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#13131a"></div><div class="info"><div class="name">--surface</div><div class="hex">#13131a</div><div class="desc">Card / container</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#1a1a24"></div><div class="info"><div class="name">--surface-2</div><div class="hex">#1a1a24</div><div class="desc">Elevated / tooltip</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#2a2a3a"></div><div class="info"><div class="name">--border</div><div class="hex">#2a2a3a</div><div class="desc">1px separator</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#e8e6e3"></div><div class="info"><div class="name">--text</div><div class="hex">#e8e6e3</div><div class="desc">Warm off-white</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#8a8898"></div><div class="info"><div class="name">--text-dim</div><div class="hex">#8a8898</div><div class="desc">Secondary text</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#5a5868"></div><div class="info"><div class="name">--text-muted</div><div class="hex">#5a5868</div><div class="desc">Micro labels</div></div></div>
+  <div class="swatch"><div class="color-block" style="background:#c8a882"></div><div class="info"><div class="name">--accent</div><div class="hex">#c8a882</div><div class="desc">Warm amber / sand</div></div></div>
+</div>
+</body></html>

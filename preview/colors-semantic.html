@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;font-family:'DM Sans',sans-serif;padding:20px}
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#13131a;border:1px solid #2a2a3a;border-radius:6px}
+.dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.var{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8a8898;width:160px;flex-shrink:0}
+.role{font-size:12px;color:#e8e6e3;flex:1}
+.example{font-size:11px;padding:3px 10px;border-radius:999px;flex-shrink:0}
+</style></head><body>
+<div class="rows">
+  <div class="row"><div class="dot" style="background:#c8a882"></div><div class="var">--accent</div><div class="role">Active states, stat numbers, italic display, active nav</div><div class="example" style="background:rgba(200,168,130,0.15);color:#c8a882;font-family:'JetBrains Mono',monospace;font-size:10px">Active</div></div>
+  <div class="row"><div class="dot" style="background:#e8e6e3"></div><div class="var">--text</div><div class="role">Primary body text, headings</div><div class="example" style="color:#e8e6e3;font-size:12px">Aesthetic Cartography</div></div>
+  <div class="row"><div class="dot" style="background:#8a8898"></div><div class="var">--text-dim</div><div class="role">Captions, section descriptions, tooltip body</div><div class="example" style="color:#8a8898;font-size:11px">Each point is one image…</div></div>
+  <div class="row"><div class="dot" style="background:#5a5868"></div><div class="var">--text-muted</div><div class="role">Stat labels, micro metadata, nav inactive</div><div class="example" style="color:#5a5868;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase">Images analysed</div></div>
+  <div class="row"><div class="dot" style="background:#13131a;border:1px solid #2a2a3a"></div><div class="var">--surface</div><div class="role">Container backgrounds, viz panels, filter area</div><div class="example" style="background:#13131a;border:1px solid #2a2a3a;color:#8a8898;font-size:11px;padding:3px 10px;border-radius:6px">Panel</div></div>
+  <div class="row"><div class="dot" style="background:#2a2a3a"></div><div class="var">--border</div><div class="role">All dividers — 1px only, never thicker</div><div class="example" style="border-bottom:1px solid #2a2a3a;color:#5a5868;font-size:11px;padding:3px 10px;border-radius:0">———</div></div>
+</div>
+</body></html>

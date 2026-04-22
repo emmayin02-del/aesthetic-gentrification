@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;font-family:'DM Sans',sans-serif;padding:20px}
+.section{margin-bottom:18px}
+.section-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#5a5868;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bar{height:24px;border-radius:3px;background:#c8a882;display:flex;align-items:center;padding-left:8px}
+.bar-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:#0a0a0f;letter-spacing:1px}
+.token{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8a8898;width:80px;flex-shrink:0}
+.px{font-size:10px;color:#5a5868}
+.radii{display:flex;gap:12px;flex-wrap:wrap}
+.radius-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+.radius-box{background:#13131a;border:1px solid #2a2a3a;width:40px;height:40px}
+.radius-name{font-family:'JetBrains Mono',monospace;font-size:9px;color:#5a5868;text-align:center}
+</style></head><body>
+<div class="section">
+  <div class="section-title">Spacing scale</div>
+  <div class="row"><div class="token">--space-2</div><div class="bar" style="width:8px"><div class="bar-label"></div></div><div class="px">8px</div></div>
+  <div class="row"><div class="token">--space-4</div><div class="bar" style="width:16px"></div><div class="px">16px</div></div>
+  <div class="row"><div class="token">--space-6</div><div class="bar" style="width:24px"></div><div class="px">24px</div></div>
+  <div class="row"><div class="token">--space-8</div><div class="bar" style="width:32px"></div><div class="px">32px</div></div>
+  <div class="row"><div class="token">--space-10</div><div class="bar" style="width:40px"></div><div class="px">40px</div></div>
+  <div class="row"><div class="token">--space-12</div><div class="bar" style="width:48px"></div><div class="px">48px</div></div>
+  <div class="row"><div class="token">--space-14</div><div class="bar" style="width:56px"></div><div class="px">56px</div></div>
+  <div class="row"><div class="token">--space-18</div><div class="bar" style="width:72px"></div><div class="px">72px</div></div>
+</div>
+<div class="section">
+  <div class="section-title">Border radius</div>
+  <div class="radii">
+    <div class="radius-item"><div class="radius-box" style="border-radius:4px"></div><div class="radius-name">sm 4px</div></div>
+    <div class="radius-item"><div class="radius-box" style="border-radius:6px"></div><div class="radius-name">md 6px<br>tooltip</div></div>
+    <div class="radius-item"><div class="radius-box" style="border-radius:8px"></div><div class="radius-name">lg 8px<br>viz</div></div>
+    <div class="radius-item"><div class="radius-box" style="border-radius:999px;width:80px;height:28px;margin-top:6px"></div><div class="radius-name">pill 999px<br>filter</div></div>
+  </div>
+</div>
+<div class="section" style="margin-bottom:0">
+  <div class="section-title">Border</div>
+  <div style="height:1px;background:#2a2a3a;width:100%;margin-bottom:6px"></div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a5868">1px solid #2a2a3a — used everywhere, never thicker</div>
+</div>
+</body></html>

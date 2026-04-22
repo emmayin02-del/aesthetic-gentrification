@@ -1,0 +1,1377 @@
+<!DOCTYPE html><html lang="en"><head>
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aesthetic Cartography — Visualization</title>
+<meta name="ext-resource-dependency" content="ui_kits/visualization/data/galaxy_data.json" data-resource-id="galaxyData" />
+<meta name="ext-resource-dependency" content="ui_kits/visualization/data/network_data.json" data-resource-id="networkData" />
+<meta name="ext-resource-dependency" content="ui_kits/visualization/data/airbnb_annotations.json" data-resource-id="airbnbAnns" />
+<meta name="ext-resource-dependency" content="ui_kits/visualization/data/instagram_annotations.json" data-resource-id="instagramAnns" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700&amp;family=Playfair+Display:ital,wght@0,400;0,700;1,400&amp;family=JetBrains+Mono:wght@300;400&amp;display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:         #0a0a0f;
+  --surface:    #13131a;
+  --surface-2:  #1a1a24;
+  --border:     #2a2a3a;
+  --text:       #e8e6e3;
+  --text-dim:   #8a8898;
+  --text-muted: #5a5868;
+  --accent:     #c8a882;
+  --accent-dim: rgba(200,168,130,0.15);
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Loading screen ── */
+#loading {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px;
+}
+.load-logo { opacity: 0.9; }
+.load-bar-wrap {
+  width: 200px; height: 1px;
+  background: var(--border);
+}
+.load-bar {
+  height: 1px; width: 0%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+.load-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-muted);
+}
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  justify-content: center; padding: 0 8vw;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; top: -20%; right: -10%;
+  width: 60vw; height: 60vw;
+  background: radial-gradient(ellipse, rgba(200,168,130,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-logo { margin-bottom: 36px; }
+.hero-logo svg { display: block; }
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 4px;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 24px;
+  opacity: 0; animation: fadeUp 0.8s 0.2s ease forwards;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.8rem, 6vw, 5.5rem);
+  font-weight: 400; line-height: 1.08;
+  max-width: 14ch;
+  opacity: 0; animation: fadeUp 0.8s 0.4s ease forwards;
+}
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-sub {
+  font-size: 1.05rem; color: var(--text-dim);
+  max-width: 52ch; margin-top: 28px; line-height: 1.65;
+  opacity: 0; animation: fadeUp 0.8s 0.6s ease forwards;
+}
+.hero-stats {
+  display: flex; gap: 48px; margin-top: 56px; flex-wrap: wrap;
+  opacity: 0; animation: fadeUp 0.8s 0.8s ease forwards;
+}
+.hero-stat-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem; color: var(--accent);
+}
+.hero-stat-label {
+  font-size: 12px; color: var(--text-muted);
+  letter-spacing: 1px; text-transform: uppercase; margin-top: 4px;
+}
+.hero-scroll {
+  position: absolute; bottom: 36px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-muted);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  opacity: 0; animation: fadeUp 0.8s 1s ease forwards;
+}
+.hero-scroll-line {
+  width: 1px; height: 40px; background: var(--border);
+  animation: scrollPulse 2s ease infinite;
+}
+
+/* ── Nav ── */
+.section-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: center;
+}
+.nav-tab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 18px 32px; cursor: pointer;
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+.nav-tab:hover { color: var(--text-dim); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Sections ── */
+.viz-section { display: none; min-height: 100vh; padding: 48px 4vw; }
+.viz-section.active { display: block; }
+.section-header { max-width: 720px; margin: 0 auto 40px; text-align: center; }
+.section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem; font-weight: 400; margin-bottom: 12px;
+}
+.section-header p { color: var(--text-dim); font-size: 0.95rem; line-height: 1.6; }
+
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex; justify-content: center;
+  gap: 8px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.filter-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  padding: 8px 16px; border-radius: 999px;
+  background: transparent; cursor: pointer; transition: all 0.2s ease;
+}
+.filter-sep {
+  width: 1px; height: 20px; background: var(--border);
+  align-self: center;
+}
+
+/* ── Galaxy ── */
+#galaxy-container {
+  position: relative; width: 100%; height: 70vh;
+  min-height: 500px; border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+}
+#galaxy-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+.galaxy-legend {
+  position: absolute; bottom: 16px; left: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.galaxy-legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.galaxy-legend-platform {
+  position: absolute; bottom: 16px; right: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  position: fixed; pointer-events: none;
+  background: rgba(19,19,26,0.97);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 16px; font-size: 12px; max-width: 260px;
+  display: none; z-index: 999;
+  font-family: 'DM Sans', sans-serif;
+}
+.tt-hood {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.tt-platform { color: var(--text-muted); font-size: 10px; margin-bottom: 4px; }
+.tt-markers { color: var(--text-dim); font-size: 11px; line-height: 1.5; }
+
+/* ── Network ── */
+#network-container {
+  position: relative; width: 100%; height: 70vh;
+  min-height: 500px; border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+}
+#network-svg { width: 100%; height: 100%; }
+.node-label {
+  font-family: 'DM Sans', sans-serif; font-size: 10px;
+  fill: var(--text-dim); pointer-events: none; text-anchor: middle;
+}
+.network-tooltip {
+  position: absolute; pointer-events: none;
+  background: rgba(19,19,26,0.97);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 16px; font-size: 12px; max-width: 280px;
+  display: none; z-index: 10;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Annotation cards ── */
+.ann-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px 18px; transition: border-color 0.2s ease;
+}
+.ann-card:hover { border-color: rgba(200,168,130,0.3); }
+.ann-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.ann-hood {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+}
+.ann-platform {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-muted); padding: 3px 8px;
+  border: 1px solid var(--border); border-radius: 999px;
+}
+.ann-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 6px; margin-top: 10px;
+}
+.ann-tags {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.ann-tag {
+  font-size: 11px; color: var(--text-dim); padding: 3px 8px;
+  background: var(--surface-2); border-radius: 4px; line-height: 1.4;
+}
+.ann-tag.highlight { background: var(--accent-dim); color: var(--accent); }
+
+/* ── Footer ── */
+.site-footer {
+  text-align: center; padding: 48px 8vw;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted); font-size: 12px; line-height: 1.8;
+}
+.site-footer a { color: var(--accent); text-decoration: none; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+@media (max-width: 640px) {
+  .hero { padding: 0 6vw; }
+  .hero-stats { gap: 24px; }
+  .nav-tab { padding: 14px 16px; font-size: 10px; }
+  #galaxy-container, #network-container { height: 55vh; }
+}
+</style>
+<template id="__bundler_thumbnail" data-bg-color="#0a0a0f">
+  <svg viewBox="0 0 320 56" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="8" cy="20" r="4.5" fill="#d4886a" opacity="0.9"/>
+    <circle cx="20" cy="12" r="3.5" fill="#d4a76a" opacity="0.85"/>
+    <circle cx="26" cy="28" r="3" fill="#7aa3c8" opacity="0.85"/>
+    <circle cx="14" cy="34" r="2.5" fill="#6a98b8" opacity="0.8"/>
+    <circle cx="32" cy="16" r="2" fill="#a8c87a" opacity="0.8"/>
+    <circle cx="36" cy="32" r="3" fill="#7ac896" opacity="0.8"/>
+    <text x="52" y="26" font-family="serif" font-size="22" fill="#e8e6e3">Aesthetic</text>
+    <text x="52" y="49" font-family="serif" font-size="22" font-style="italic" fill="#c8a882">Cartography</text>
+  </svg>
+</template>
+</head>
+<body data-new-gr-c-s-check-loaded="14.1284.0" data-gr-ext-installed="" data-cc-id="cc-1" style="cursor: crosshair; background-color: rgb(4, 4, 6);">
+
+<!-- Loading screen -->
+<div id="loading" style="opacity: 0; transition: opacity 0.5s; display: none;">
+  <div class="load-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 56" width="240" height="42">
+      <circle cx="8" cy="20" r="4.5" fill="#d4886a" opacity="0.9"></circle>
+      <circle cx="20" cy="12" r="3.5" fill="#d4a76a" opacity="0.85"></circle>
+      <circle cx="26" cy="28" r="3" fill="#7aa3c8" opacity="0.85"></circle>
+      <circle cx="14" cy="34" r="2.5" fill="#6a98b8" opacity="0.8"></circle>
+      <circle cx="32" cy="16" r="2" fill="#a8c87a" opacity="0.8"></circle>
+      <circle cx="36" cy="32" r="3" fill="#7ac896" opacity="0.8"></circle>
+      <circle cx="6" cy="38" r="1.8" fill="#c8a882" opacity="0.6"></circle>
+      <circle cx="22" cy="42" r="1.5" fill="#d4886a" opacity="0.5"></circle>
+      <circle cx="38" cy="42" r="1.5" fill="#7aa3c8" opacity="0.5"></circle>
+      <text x="52" y="26" font-family="'Playfair Display', Georgia, serif" font-size="22" font-weight="400" fill="#e8e6e3">Aesthetic</text>
+      <text x="52" y="49" font-family="'Playfair Display', Georgia, serif" font-size="22" font-weight="400" font-style="italic" fill="#c8a882">Cartography</text>
+    </svg>
+  </div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar" style="width: 100%;"></div></div>
+  <div class="load-label" id="load-label">Ready</div>
+</div>
+
+<!-- Hero -->
+<section class="hero" id="hero" style="">
+  <div class="hero-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 56" width="260" height="46">
+      <circle cx="8" cy="20" r="4.5" fill="#d4886a" opacity="0.9"></circle>
+      <circle cx="20" cy="12" r="3.5" fill="#d4a76a" opacity="0.85"></circle>
+      <circle cx="26" cy="28" r="3" fill="#7aa3c8" opacity="0.85"></circle>
+      <circle cx="14" cy="34" r="2.5" fill="#6a98b8" opacity="0.8"></circle>
+      <circle cx="32" cy="16" r="2" fill="#a8c87a" opacity="0.8"></circle>
+      <circle cx="36" cy="32" r="3" fill="#7ac896" opacity="0.8"></circle>
+      <circle cx="6" cy="38" r="1.8" fill="#c8a882" opacity="0.6"></circle>
+      <circle cx="22" cy="42" r="1.5" fill="#d4886a" opacity="0.5"></circle>
+      <circle cx="38" cy="42" r="1.5" fill="#7aa3c8" opacity="0.5"></circle>
+      <text x="52" y="26" font-family="'Playfair Display', Georgia, serif" font-size="22" font-weight="400" fill="#e8e6e3">Aesthetic</text>
+      <text x="52" y="49" font-family="'Playfair Display', Georgia, serif" font-size="22" font-weight="400" font-style="italic" fill="#c8a882">Cartography</text>
+    </svg>
+  </div>
+  <div class="hero-eyebrow">Media Studies × Computational Analysis</div>
+  <h1>Mapping the <em>Visual Language</em> of Gentrification</h1>
+  <p class="hero-sub" id="hero-sub">Mapping the visual language of gentrification across Amsterdam, London, and Tokyo — through 1,164 Airbnb and Instagram images, annotated by vision-language models and projected into shared aesthetic space.</p>
+  <div class="hero-stats" id="hero-stats"><div><div class="hero-stat-val">1,164</div><div class="hero-stat-label">Images analysed</div></div><div><div class="hero-stat-val">6</div><div class="hero-stat-label">Neighborhoods</div></div><div><div class="hero-stat-val">28</div><div class="hero-stat-label">Visual markers</div></div><div><div class="hero-stat-val">3</div><div class="hero-stat-label">Cities</div></div></div>
+  <div class="hero-scroll">Scroll to explore<div class="hero-scroll-line"></div></div>
+</section>
+
+<!-- Nav -->
+<nav class="section-nav" id="main-nav" style="">
+  <button class="nav-tab active" data-target="galaxy">Galaxy View</button>
+  <button class="nav-tab" data-target="network">Marker Network</button>
+  <button class="nav-tab" data-target="annotations">Annotations</button>
+</nav>
+
+<!-- Galaxy section -->
+<section id="sec-galaxy" class="viz-section active" style="">
+  <div class="section-header">
+    <h2>Visual Galaxy</h2>
+    <p>Each point is one image — Airbnb listing or Instagram post — projected from 512-dimensional CLIP embeddings into 2D via UMAP. Visually similar images cluster together. When neighborhoods from different cities overlap, it reveals transnational aesthetic convergence.</p>
+  </div>
+  <div class="filter-bar" id="galaxy-filters"><button class="filter-btn active" data-platform="all" style="border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim);">All platforms</button><button class="filter-btn" data-platform="instagram" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">instagram</button><button class="filter-btn" data-platform="airbnb" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">airbnb</button><div class="filter-sep"></div><button class="filter-btn active" data-hood="de_pijp" style="border: 1px solid rgb(212, 136, 106); color: rgb(212, 136, 106); background: rgba(212, 136, 106, 0.15);">De Pijp</button><button class="filter-btn active" data-hood="hackney" style="border: 1px solid rgb(106, 152, 184); color: rgb(106, 152, 184); background: rgba(106, 152, 184, 0.15);">Hackney</button><button class="filter-btn active" data-hood="jordaan" style="border: 1px solid rgb(212, 167, 106); color: rgb(212, 167, 106); background: rgba(212, 167, 106, 0.15);">Jordaan</button><button class="filter-btn active" data-hood="kiyosumi_shirakawa" style="border: 1px solid rgb(122, 200, 150); color: rgb(122, 200, 150); background: rgba(122, 200, 150, 0.15);">Kiyosumi-Shirakawa</button><button class="filter-btn active" data-hood="shimokitazawa" style="border: 1px solid rgb(168, 200, 122); color: rgb(168, 200, 122); background: rgba(168, 200, 122, 0.15);">Shimokitazawa</button><button class="filter-btn active" data-hood="shoreditch" style="border: 1px solid rgb(122, 163, 200); color: rgb(122, 163, 200); background: rgba(122, 163, 200, 0.15);">Shoreditch</button></div>
+  <div id="galaxy-container">
+    <canvas id="galaxy-canvas" width="1911" height="1000" style="width: 955.891px; height: 500px;"></canvas>
+    <div class="galaxy-legend" id="galaxy-legend"><div class="galaxy-legend-item"><span class="legend-dot" style="background:#d4886a"></span>De Pijp</div><div class="galaxy-legend-item"><span class="legend-dot" style="background:#6a98b8"></span>Hackney</div><div class="galaxy-legend-item"><span class="legend-dot" style="background:#d4a76a"></span>Jordaan</div><div class="galaxy-legend-item"><span class="legend-dot" style="background:#7ac896"></span>Kiyosumi-Shirakawa</div><div class="galaxy-legend-item"><span class="legend-dot" style="background:#a8c87a"></span>Shimokitazawa</div><div class="galaxy-legend-item"><span class="legend-dot" style="background:#7aa3c8"></span>Shoreditch</div></div>
+    <div class="galaxy-legend-platform">
+      <div class="galaxy-legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.85)"></span>Instagram</div>
+      <div class="galaxy-legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.2)"></span>Airbnb</div>
+    </div>
+    <div class="tooltip" id="galaxy-tooltip">
+      <div class="tt-hood"></div>
+      <div class="tt-platform"></div>
+      <div class="tt-markers"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Network section -->
+<section id="sec-network" class="viz-section" style="">
+  <div class="section-header">
+    <h2>Marker Co-occurrence Network</h2>
+    <p>Nodes are canonical visual markers identified by VLM annotation. Edges connect markers that appear together in the same image. Thicker edges = more frequent co-occurrence. This reveals the "grammar" of gentrification aesthetics — which elements form a consistent visual vocabulary.</p>
+  </div>
+  <div class="filter-bar" id="network-filters"><button class="filter-btn active" data-hood="all" style="border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim);">All neighborhoods</button><button class="filter-btn" data-hood="de_pijp" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">De Pijp</button><button class="filter-btn" data-hood="hackney" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Hackney</button><button class="filter-btn" data-hood="jordaan" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Jordaan</button><button class="filter-btn" data-hood="kiyosumi_shirakawa" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Kiyosumi-Shirakawa</button><button class="filter-btn" data-hood="shimokitazawa" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Shimokitazawa</button><button class="filter-btn" data-hood="shoreditch" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Shoreditch</button></div>
+  <div id="network-container">
+    <svg id="network-svg" viewBox="0,0,0,0"><g transform="translate(-138.94825236314534,-28.579424556845822) scale(1.3360740783901024)"><g><line stroke="rgba(200,168,130,0.15)" stroke-width="4" x1="47.519526403971746" y1="-11.473042958869504" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="3.572674418604651" x1="-10.931880202241677" y1="-51.41340350640739" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="3.3895348837209305" x1="-10.931880202241677" y1="-51.41340350640739" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="3.308139534883721" x1="47.519526403971746" y1="-11.473042958869504" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="3.2810077519379846" x1="38.530943521128094" y1="55.69150617430823" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.9079457364341086" x1="-17.256047908927336" y1="18.42265154070621" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.9079457364341086" x1="38.530943521128094" y1="55.69150617430823" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.8943798449612403" x1="-10.931880202241677" y1="-51.41340350640739" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.738372093023256" x1="-10.931880202241677" y1="-51.41340350640739" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.731589147286822" x1="-66.53814633546631" y1="-82.83599583113974" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.636627906976744" x1="47.519526403971746" y1="-11.473042958869504" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.562015503875969" x1="-17.256047908927336" y1="18.42265154070621" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.439922480620155" x1="-10.931880202241677" y1="-51.41340350640739" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.4127906976744184" x1="95.59773420246661" y1="32.30904559985128" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.3924418604651163" x1="-78.13791754726827" y1="37.66038390199873" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.36531007751938" x1="-66.53814633546631" y1="-82.83599583113974" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.3449612403100777" x1="47.519526403971746" y1="-11.473042958869504" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.2906976744186047" x1="-10.931880202241677" y1="-51.41340350640739" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.2025193798449614" x1="-78.13791754726827" y1="37.66038390199873" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.195736434108527" x1="-17.256047908927336" y1="18.42265154070621" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.195736434108527" x1="95.59773420246661" y1="32.30904559985128" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.141472868217054" x1="-10.931880202241677" y1="-51.41340350640739" x2="95.59773420246661" y2="32.30904559985128"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.13468992248062" x1="-66.53814633546631" y1="-82.83599583113974" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.1279069767441863" x1="30.38193447709963" y1="-97.87077923749376" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.080426356589147" x1="-10.931880202241677" y1="-51.41340350640739" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.0736434108527133" x1="-10.931880202241677" y1="-51.41340350640739" x2="30.38193447709963" y2="-97.87077923749376"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.0532945736434107" x1="-10.931880202241677" y1="-51.41340350640739" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.005813953488372" x1="38.530943521128094" y1="55.69150617430823" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="2.005813953488372" x1="30.38193447709963" y1="-97.87077923749376" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.9718992248062017" x1="38.530943521128094" y1="55.69150617430823" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.9583333333333335" x1="-115.84338887638492" y1="-58.25833455139311" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.9515503875968991" x1="-115.84338887638492" y1="-58.25833455139311" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.883720930232558" x1="-17.256047908927336" y1="18.42265154070621" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.876937984496124" x1="47.519526403971746" y1="-11.473042958869504" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.876937984496124" x1="-70.71853937893815" y1="-22.14405660119247" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.8633720930232558" x1="38.530943521128094" y1="55.69150617430823" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.8633720930232558" x1="-70.71853937893815" y1="-22.14405660119247" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.856589147286822" x1="17.995827233429644" y1="109.86309443930104" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.822674418604651" x1="-20.238502727472156" y1="-110.22876396633497" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7751937984496124" x1="-20.238502727472156" y1="-110.22876396633497" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7751937984496124" x1="95.59773420246661" y1="32.30904559985128" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.768410852713178" x1="-10.931880202241677" y1="-51.41340350640739" x2="17.995827233429644" y2="109.86309443930104"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7548449612403103" x1="47.519526403971746" y1="-11.473042958869504" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7277131782945738" x1="-10.931880202241677" y1="-51.41340350640739" x2="-115.84338887638492" y2="-58.25833455139311"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7277131782945738" x1="-70.71853937893815" y1="-22.14405660119247" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7209302325581395" x1="-66.53814633546631" y1="-82.83599583113974" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7073643410852712" x1="119.91729676326736" y1="-26.96997626584997" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.7005813953488373" x1="-78.13791754726827" y1="37.66038390199873" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.687015503875969" x1="30.38193447709963" y1="-97.87077923749376" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.6802325581395348" x1="38.530943521128094" y1="55.69150617430823" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.6802325581395348" x1="30.38193447709963" y1="-97.87077923749376" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.6531007751937983" x1="-17.256047908927336" y1="18.42265154070621" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.625968992248062" x1="47.519526403971746" y1="-11.473042958869504" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.6124031007751938" x1="-10.931880202241677" y1="-51.41340350640739" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.6124031007751938" x1="-66.53814633546631" y1="-82.83599583113974" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5852713178294573" x1="-10.931880202241677" y1="-51.41340350640739" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5445736434108526" x1="119.91729676326736" y1="-26.96997626584997" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5445736434108526" x1="30.38193447709963" y1="-97.87077923749376" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5310077519379846" x1="47.519526403971746" y1="-11.473042958869504" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5310077519379846" x1="30.38193447709963" y1="-97.87077923749376" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5242248062015504" x1="-17.256047908927336" y1="18.42265154070621" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.5106589147286822" x1="95.59773420246661" y1="32.30904559985128" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.503875968992248" x1="-17.256047908927336" y1="18.42265154070621" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.503875968992248" x1="-20.238502727472156" y1="-110.22876396633497" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.497093023255814" x1="47.519526403971746" y1="-11.473042958869504" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.497093023255814" x1="151.88208029865106" y1="14.484190879584967" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4835271317829457" x1="-10.931880202241677" y1="-51.41340350640739" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4699612403100775" x1="-10.931880202241677" y1="-51.41340350640739" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4699612403100775" x1="95.59773420246661" y1="32.30904559985128" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4699612403100775" x1="95.59773420246661" y1="32.30904559985128" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.449612403100775" x1="-10.931880202241677" y1="-51.41340350640739" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.442829457364341" x1="-115.84338887638492" y1="-58.25833455139311" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.442829457364341" x1="-66.53814633546631" y1="-82.83599583113974" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.442829457364341" x1="79.58235938984141" y1="-68.84881316361788" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4360465116279069" x1="38.530943521128094" y1="55.69150617430823" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.429263565891473" x1="-70.71853937893815" y1="-22.14405660119247" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4224806201550388" x1="-78.13791754726827" y1="37.66038390199873" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4224806201550388" x1="-78.13791754726827" y1="37.66038390199873" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4156976744186047" x1="95.59773420246661" y1="32.30904559985128" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4156976744186047" x1="-65.36289933481567" y1="-134.5622505340364" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4156976744186047" x1="-10.931880202241677" y1="-51.41340350640739" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4089147286821706" x1="38.530943521128094" y1="55.69150617430823" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.4021317829457365" x1="-115.84338887638492" y1="-58.25833455139311" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3953488372093024" x1="-17.256047908927336" y1="18.42265154070621" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3953488372093024" x1="17.995827233429644" y1="109.86309443930104" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3885658914728682" x1="-66.53814633546631" y1="-82.83599583113974" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.375" x1="95.39723147373404" y1="-119.88380453270814" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3682170542635659" x1="38.530943521128094" y1="55.69150617430823" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3682170542635659" x1="30.38193447709963" y1="-97.87077923749376" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3614341085271318" x1="95.39723147373404" y1="-119.88380453270814" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3614341085271318" x1="-65.36289933481567" y1="-134.5622505340364" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3546511627906976" x1="-20.238502727472156" y1="-110.22876396633497" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3546511627906976" x1="-70.71853937893815" y1="-22.14405660119247" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3546511627906976" x1="-115.84338887638492" y1="-58.25833455139311" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3478682170542635" x1="-10.931880202241677" y1="-51.41340350640739" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3478682170542635" x1="17.995827233429644" y1="109.86309443930104" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3478682170542635" x1="-29.594547188899885" y1="81.7001999382448" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3410852713178296" x1="-100.34071245158023" y1="86.6298536918707" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3410852713178296" x1="47.519526403971746" y1="-11.473042958869504" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3139534883720931" x1="30.38193447709963" y1="-97.87077923749376" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3139534883720931" x1="17.995827233429644" y1="109.86309443930104" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.3071705426356588" x1="-10.931880202241677" y1="-51.41340350640739" x2="-65.36289933481567" y2="-134.5622505340364"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.300387596899225" x1="-70.71853937893815" y1="-22.14405660119247" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2936046511627906" x1="-115.84338887638492" y1="-58.25833455139311" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2936046511627906" x1="-66.53814633546631" y1="-82.83599583113974" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2936046511627906" x1="17.995827233429644" y1="109.86309443930104" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2936046511627906" x1="38.530943521128094" y1="55.69150617430823" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2800387596899225" x1="-115.84338887638492" y1="-58.25833455139311" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2732558139534884" x1="-10.931880202241677" y1="-51.41340350640739" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2664728682170543" x1="95.59773420246661" y1="32.30904559985128" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2596899224806202" x1="119.91729676326736" y1="-26.96997626584997" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.252906976744186" x1="151.88208029865106" y1="14.484190879584967" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.246124031007752" x1="-65.21668089513675" y1="120.3844359409531" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2393410852713178" x1="17.995827233429644" y1="109.86309443930104" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2393410852713178" x1="119.91729676326736" y1="-26.96997626584997" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2393410852713178" x1="47.519526403971746" y1="-11.473042958869504" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2325581395348837" x1="-20.238502727472156" y1="-110.22876396633497" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2257751937984496" x1="17.995827233429644" y1="109.86309443930104" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2257751937984496" x1="-65.36289933481567" y1="-134.5622505340364" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2189922480620154" x1="-66.53814633546631" y1="-82.83599583113974" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2189922480620154" x1="95.59773420246661" y1="32.30904559985128" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2189922480620154" x1="-70.71853937893815" y1="-22.14405660119247" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2189922480620154" x1="-10.931880202241677" y1="-51.41340350640739" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2122093023255813" x1="-115.84338887638492" y1="-58.25833455139311" x2="95.59773420246661" y2="32.30904559985128"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2122093023255813" x1="-70.71853937893815" y1="-22.14405660119247" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2054263565891472" x1="-10.931880202241677" y1="-51.41340350640739" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.2054263565891472" x1="-17.256047908927336" y1="18.42265154070621" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.198643410852713" x1="-20.238502727472156" y1="-110.22876396633497" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.198643410852713" x1="30.38193447709963" y1="-97.87077923749376" x2="17.995827233429644" y2="109.86309443930104"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.191860465116279" x1="-17.256047908927336" y1="18.42265154070621" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1850775193798448" x1="-20.238502727472156" y1="-110.22876396633497" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.178294573643411" x1="30.38193447709963" y1="-97.87077923749376" x2="-115.84338887638492" y2="-58.25833455139311"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.178294573643411" x1="-100.34071245158023" y1="86.6298536918707" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1647286821705427" x1="86.56084651678448" y1="85.17080949230098" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1647286821705427" x1="38.530943521128094" y1="55.69150617430823" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1647286821705427" x1="-17.256047908927336" y1="18.42265154070621" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1579457364341086" x1="38.530943521128094" y1="55.69150617430823" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1579457364341086" x1="-65.21668089513675" y1="120.3844359409531" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1443798449612403" x1="30.38193447709963" y1="-97.87077923749376" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1375968992248062" x1="151.88208029865106" y1="14.484190879584967" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.130813953488372" x1="17.995827233429644" y1="109.86309443930104" x2="95.59773420246661" y2="32.30904559985128"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.130813953488372" x1="95.59773420246661" y1="32.30904559985128" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.130813953488372" x1="-115.84338887638492" y1="-58.25833455139311" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.130813953488372" x1="30.38193447709963" y1="-97.87077923749376" x2="95.59773420246661" y2="32.30904559985128"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.124031007751938" x1="119.91729676326736" y1="-26.96997626584997" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1172480620155039" x1="-66.53814633546631" y1="-82.83599583113974" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1172480620155039" x1="151.88208029865106" y1="14.484190879584967" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1104651162790697" x1="95.39723147373404" y1="-119.88380453270814" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1104651162790697" x1="-78.13791754726827" y1="37.66038390199873" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1104651162790697" x1="-78.13791754726827" y1="37.66038390199873" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1104651162790697" x1="-139.8573906309547" y1="54.5824557810362" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.1104651162790697" x1="-65.36289933481567" y1="-134.5622505340364" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0968992248062015" x1="-17.256047908927336" y1="18.42265154070621" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0968992248062015" x1="86.56084651678448" y1="85.17080949230098" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0968992248062015" x1="30.38193447709963" y1="-97.87077923749376" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0968992248062015" x1="-66.53814633546631" y1="-82.83599583113974" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0901162790697674" x1="30.38193447709963" y1="-97.87077923749376" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0901162790697674" x1="17.995827233429644" y1="109.86309443930104" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0833333333333333" x1="17.995827233429644" y1="109.86309443930104" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0833333333333333" x1="30.38193447709963" y1="-97.87077923749376" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0833333333333333" x1="30.38193447709963" y1="-97.87077923749376" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0765503875968991" x1="-115.84338887638492" y1="-58.25833455139311" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0765503875968991" x1="-66.53814633546631" y1="-82.83599583113974" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0697674418604652" x1="47.519526403971746" y1="-11.473042958869504" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0697674418604652" x1="-65.36289933481567" y1="-134.5622505340364" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.062984496124031" x1="38.530943521128094" y1="55.69150617430823" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0494186046511627" x1="95.39723147373404" y1="-119.88380453270814" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0494186046511627" x1="-66.53814633546631" y1="-82.83599583113974" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0494186046511627" x1="-65.21668089513675" y1="120.3844359409531" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0426356589147288" x1="17.995827233429644" y1="109.86309443930104" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0426356589147288" x1="95.59773420246661" y1="32.30904559985128" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0358527131782944" x1="-100.34071245158023" y1="86.6298536918707" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0358527131782944" x1="-20.238502727472156" y1="-110.22876396633497" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0358527131782944" x1="-10.931880202241677" y1="-51.41340350640739" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0290697674418605" x1="-20.238502727472156" y1="-110.22876396633497" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0290697674418605" x1="-70.71853937893815" y1="-22.14405660119247" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0222868217054262" x1="-65.21668089513675" y1="120.3844359409531" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0222868217054262" x1="95.59773420246661" y1="32.30904559985128" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0222868217054262" x1="-65.36289933481567" y1="-134.5622505340364" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0155038759689923" x1="119.91729676326736" y1="-26.96997626584997" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0155038759689923" x1="-65.36289933481567" y1="-134.5622505340364" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0155038759689923" x1="-20.238502727472156" y1="-110.22876396633497" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0087209302325582" x1="-115.84338887638492" y1="-58.25833455139311" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0087209302325582" x1="30.38193447709963" y1="-97.87077923749376" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0087209302325582" x1="47.519526403971746" y1="-11.473042958869504" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.0087209302325582" x1="38.530943521128094" y1="55.69150617430823" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.001937984496124" x1="38.530943521128094" y1="55.69150617430823" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.001937984496124" x1="119.91729676326736" y1="-26.96997626584997" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.001937984496124" x1="-65.36289933481567" y1="-134.5622505340364" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="1.001937984496124" x1="17.995827233429644" y1="109.86309443930104" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9951550387596899" x1="-20.238502727472156" y1="-110.22876396633497" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9883720930232558" x1="-20.238502727472156" y1="-110.22876396633497" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9883720930232558" x1="30.38193447709963" y1="-97.87077923749376" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9883720930232558" x1="-78.13791754726827" y1="37.66038390199873" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9883720930232558" x1="95.39723147373404" y1="-119.88380453270814" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9815891472868217" x1="95.59773420246661" y1="32.30904559985128" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9815891472868217" x1="17.995827233429644" y1="109.86309443930104" x2="-65.36289933481567" y2="-134.5622505340364"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9748062015503876" x1="86.56084651678448" y1="85.17080949230098" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9748062015503876" x1="119.91729676326736" y1="-26.96997626584997" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9748062015503876" x1="-10.931880202241677" y1="-51.41340350640739" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9748062015503876" x1="79.58235938984141" y1="-68.84881316361788" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9680232558139534" x1="-115.84338887638492" y1="-58.25833455139311" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9612403100775194" x1="17.995827233429644" y1="109.86309443930104" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9612403100775194" x1="-65.36289933481567" y1="-134.5622505340364" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9612403100775194" x1="-181.496140325818" y1="-34.53253785034787" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9544573643410853" x1="-66.53814633546631" y1="-82.83599583113974" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9544573643410853" x1="17.995827233429644" y1="109.86309443930104" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9544573643410853" x1="-115.84338887638492" y1="-58.25833455139311" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9476744186046512" x1="-139.8573906309547" y1="54.5824557810362" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9476744186046512" x1="-70.71853937893815" y1="-22.14405660119247" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9476744186046512" x1="38.530943521128094" y1="55.69150617430823" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9408914728682171" x1="-78.13791754726827" y1="37.66038390199873" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9408914728682171" x1="30.38193447709963" y1="-97.87077923749376" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9408914728682171" x1="-66.53814633546631" y1="-82.83599583113974" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9408914728682171" x1="-181.496140325818" y1="-34.53253785034787" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9341085271317829" x1="-115.84338887638492" y1="-58.25833455139311" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9273255813953488" x1="-78.13791754726827" y1="37.66038390199873" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9205426356589148" x1="17.995827233429644" y1="109.86309443930104" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9205426356589148" x1="27.538722191224522" y1="162.84537310933246" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9137596899224807" x1="95.59773420246661" y1="32.30904559985128" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9137596899224807" x1="30.38193447709963" y1="-97.87077923749376" x2="-65.36289933481567" y2="-134.5622505340364"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9137596899224807" x1="-115.84338887638492" y1="-58.25833455139311" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9069767441860466" x1="17.995827233429644" y1="109.86309443930104" x2="-115.84338887638492" y2="-58.25833455139311"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9069767441860466" x1="86.56084651678448" y1="85.17080949230098" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9069767441860466" x1="151.88208029865106" y1="14.484190879584967" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9001937984496124" x1="-115.84338887638492" y1="-58.25833455139311" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9001937984496124" x1="-65.36289933481567" y1="-134.5622505340364" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.9001937984496124" x1="86.56084651678448" y1="85.17080949230098" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8934108527131783" x1="93.11483158087977" y1="217.48760594385098" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8934108527131783" x1="28.046581068452156" y1="-162.4976874464688" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8934108527131783" x1="95.59773420246661" y1="32.30904559985128" x2="-65.36289933481567" y2="-134.5622505340364"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8934108527131783" x1="151.88208029865106" y1="14.484190879584967" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8934108527131783" x1="-65.36289933481567" y1="-134.5622505340364" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8866279069767442" x1="-66.53814633546631" y1="-82.83599583113974" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8866279069767442" x1="-100.34071245158023" y1="86.6298536918707" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8798449612403101" x1="95.39723147373404" y1="-119.88380453270814" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8798449612403101" x1="151.88208029865106" y1="14.484190879584967" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8798449612403101" x1="151.88208029865106" y1="14.484190879584967" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.873062015503876" x1="17.995827233429644" y1="109.86309443930104" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.873062015503876" x1="95.59773420246661" y1="32.30904559985128" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.873062015503876" x1="38.530943521128094" y1="55.69150617430823" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8662790697674418" x1="-139.8573906309547" y1="54.5824557810362" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8662790697674418" x1="-65.21668089513675" y1="120.3844359409531" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8594961240310077" x1="-78.13791754726827" y1="37.66038390199873" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8594961240310077" x1="-139.8573906309547" y1="54.5824557810362" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8594961240310077" x1="30.38193447709963" y1="-97.87077923749376" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8594961240310077" x1="79.58235938984141" y1="-68.84881316361788" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8527131782945736" x1="95.59773420246661" y1="32.30904559985128" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8527131782945736" x1="93.11483158087977" y1="217.48760594385098" x2="-17.256047908927336" y2="18.42265154070621"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8527131782945736" x1="119.91729676326736" y1="-26.96997626584997" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8527131782945736" x1="-115.84338887638492" y1="-58.25833455139311" x2="-65.36289933481567" y2="-134.5622505340364"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8527131782945736" x1="-115.84338887638492" y1="-58.25833455139311" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8459302325581395" x1="30.38193447709963" y1="-97.87077923749376" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8391472868217055" x1="-139.8573906309547" y1="54.5824557810362" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8391472868217055" x1="119.91729676326736" y1="-26.96997626584997" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8391472868217055" x1="-66.53814633546631" y1="-82.83599583113974" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8323643410852714" x1="-139.8573906309547" y1="54.5824557810362" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8323643410852714" x1="86.56084651678448" y1="85.17080949230098" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8323643410852714" x1="-181.496140325818" y1="-34.53253785034787" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8255813953488372" x1="95.39723147373404" y1="-119.88380453270814" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8255813953488372" x1="-10.931880202241677" y1="-51.41340350640739" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8255813953488372" x1="-20.238502727472156" y1="-110.22876396633497" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8255813953488372" x1="-65.36289933481567" y1="-134.5622505340364" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8255813953488372" x1="17.995827233429644" y1="109.86309443930104" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8187984496124031" x1="95.59773420246661" y1="32.30904559985128" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8187984496124031" x1="-78.13791754726827" y1="37.66038390199873" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.812015503875969" x1="-115.84338887638492" y1="-58.25833455139311" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.812015503875969" x1="17.995827233429644" y1="109.86309443930104" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.812015503875969" x1="-66.53814633546631" y1="-82.83599583113974" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.812015503875969" x1="-65.36289933481567" y1="-134.5622505340364" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8052325581395349" x1="119.91729676326736" y1="-26.96997626584997" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.8052325581395349" x1="17.995827233429644" y1="109.86309443930104" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7984496124031008" x1="-115.84338887638492" y1="-58.25833455139311" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7916666666666666" x1="-66.53814633546631" y1="-82.83599583113974" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7916666666666666" x1="30.38193447709963" y1="-97.87077923749376" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7848837209302326" x1="95.39723147373404" y1="-119.88380453270814" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7848837209302326" x1="79.58235938984141" y1="-68.84881316361788" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7781007751937985" x1="93.11483158087977" y1="217.48760594385098" x2="38.530943521128094" y2="55.69150617430823"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7781007751937985" x1="-20.238502727472156" y1="-110.22876396633497" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7713178294573644" x1="-20.238502727472156" y1="-110.22876396633497" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7713178294573644" x1="95.59773420246661" y1="32.30904559985128" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7713178294573644" x1="-65.36289933481567" y1="-134.5622505340364" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="93.11483158087977" y1="217.48760594385098" x2="95.59773420246661" y2="32.30904559985128"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="-78.13791754726827" y1="37.66038390199873" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="119.91729676326736" y1="-26.96997626584997" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="27.538722191224522" y1="162.84537310933246" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="-139.8573906309547" y1="54.5824557810362" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7645348837209303" x1="-20.238502727472156" y1="-110.22876396633497" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7577519379844961" x1="-78.13791754726827" y1="37.66038390199873" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7577519379844961" x1="-65.36289933481567" y1="-134.5622505340364" x2="119.91729676326736" y2="-26.96997626584997"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7577519379844961" x1="119.91729676326736" y1="-26.96997626584997" x2="-20.238502727472156" y2="-110.22876396633497"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7577519379844961" x1="-65.36289933481567" y1="-134.5622505340364" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.750968992248062" x1="-65.36289933481567" y1="-134.5622505340364" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.750968992248062" x1="-70.71853937893815" y1="-22.14405660119247" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7441860465116279" x1="-115.84338887638492" y1="-58.25833455139311" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7441860465116279" x1="-20.238502727472156" y1="-110.22876396633497" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7374031007751938" x1="-65.36289933481567" y1="-134.5622505340364" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7306201550387597" x1="-10.931880202241677" y1="-51.41340350640739" x2="93.11483158087977" y2="217.48760594385098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7306201550387597" x1="-115.84338887638492" y1="-58.25833455139311" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7306201550387597" x1="17.995827233429644" y1="109.86309443930104" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7238372093023255" x1="177.15862666893642" y1="-92.99539395999857" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7238372093023255" x1="28.046581068452156" y1="-162.4976874464688" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7238372093023255" x1="95.59773420246661" y1="32.30904559985128" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7238372093023255" x1="-181.496140325818" y1="-34.53253785034787" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7170542635658914" x1="-100.34071245158023" y1="86.6298536918707" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7170542635658914" x1="86.56084651678448" y1="85.17080949230098" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7170542635658914" x1="119.91729676326736" y1="-26.96997626584997" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7102713178294574" x1="93.11483158087977" y1="217.48760594385098" x2="-66.53814633546631" y2="-82.83599583113974"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7102713178294574" x1="-65.21668089513675" y1="120.3844359409531" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7034883720930233" x1="177.15862666893642" y1="-92.99539395999857" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7034883720930233" x1="95.59773420246661" y1="32.30904559985128" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7034883720930233" x1="30.38193447709963" y1="-97.87077923749376" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.7034883720930233" x1="86.56084651678448" y1="85.17080949230098" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6967054263565892" x1="95.39723147373404" y1="-119.88380453270814" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6967054263565892" x1="95.39723147373404" y1="-119.88380453270814" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6831395348837209" x1="119.91729676326736" y1="-26.96997626584997" x2="151.88208029865106" y2="14.484190879584967"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6763565891472868" x1="17.995827233429644" y1="109.86309443930104" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6763565891472868" x1="-139.8573906309547" y1="54.5824557810362" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6763565891472868" x1="-65.36289933481567" y1="-134.5622505340364" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6695736434108528" x1="-139.8573906309547" y1="54.5824557810362" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6627906976744187" x1="93.11483158087977" y1="217.48760594385098" x2="-78.13791754726827" y2="37.66038390199873"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6627906976744187" x1="95.39723147373404" y1="-119.88380453270814" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6627906976744187" x1="-65.36289933481567" y1="-134.5622505340364" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6627906976744187" x1="119.91729676326736" y1="-26.96997626584997" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6627906976744187" x1="151.88208029865106" y1="14.484190879584967" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6560077519379846" x1="95.39723147373404" y1="-119.88380453270814" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6560077519379846" x1="93.11483158087977" y1="217.48760594385098" x2="95.39723147373404" y2="-119.88380453270814"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6560077519379846" x1="119.91729676326736" y1="-26.96997626584997" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6492248062015504" x1="119.91729676326736" y1="-26.96997626584997" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6492248062015504" x1="151.88208029865106" y1="14.484190879584967" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6492248062015504" x1="177.15862666893642" y1="-92.99539395999857" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6492248062015504" x1="-181.496140325818" y1="-34.53253785034787" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6424418604651163" x1="93.11483158087977" y1="217.48760594385098" x2="47.519526403971746" y2="-11.473042958869504"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6356589147286822" x1="30.38193447709963" y1="-97.87077923749376" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6356589147286822" x1="95.59773420246661" y1="32.30904559985128" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6288759689922481" x1="95.39723147373404" y1="-119.88380453270814" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6288759689922481" x1="93.11483158087977" y1="217.48760594385098" x2="-115.84338887638492" y2="-58.25833455139311"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6288759689922481" x1="93.11483158087977" y1="217.48760594385098" x2="-29.594547188899885" y2="81.7001999382448"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6288759689922481" x1="-20.238502727472156" y1="-110.22876396633497" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6153100775193798" x1="177.15862666893642" y1="-92.99539395999857" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6153100775193798" x1="177.15862666893642" y1="-92.99539395999857" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6153100775193798" x1="119.91729676326736" y1="-26.96997626584997" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6153100775193798" x1="95.39723147373404" y1="-119.88380453270814" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6085271317829457" x1="93.11483158087977" y1="217.48760594385098" x2="79.58235938984141" y2="-68.84881316361788"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6085271317829457" x1="151.88208029865106" y1="14.484190879584967" x2="-65.21668089513675" y2="120.3844359409531"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6017441860465116" x1="93.11483158087977" y1="217.48760594385098" x2="-70.71853937893815" y2="-22.14405660119247"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6017441860465116" x1="151.88208029865106" y1="14.484190879584967" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.6017441860465116" x1="-65.21668089513675" y1="120.3844359409531" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5949612403100775" x1="93.11483158087977" y1="217.48760594385098" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5949612403100775" x1="-115.84338887638492" y1="-58.25833455139311" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5949612403100775" x1="177.15862666893642" y1="-92.99539395999857" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5949612403100775" x1="-181.496140325818" y1="-34.53253785034787" x2="28.046581068452156" y2="-162.4976874464688"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5881782945736433" x1="151.88208029865106" y1="14.484190879584967" x2="-100.34071245158023" y2="86.6298536918707"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5881782945736433" x1="177.15862666893642" y1="-92.99539395999857" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5813953488372092" x1="17.995827233429644" y1="109.86309443930104" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5813953488372092" x1="177.15862666893642" y1="-92.99539395999857" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5746124031007752" x1="-139.8573906309547" y1="54.5824557810362" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5746124031007752" x1="119.91729676326736" y1="-26.96997626584997" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5678294573643411" x1="93.11483158087977" y1="217.48760594385098" x2="30.38193447709963" y2="-97.87077923749376"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.561046511627907" x1="95.39723147373404" y1="-119.88380453270814" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.561046511627907" x1="177.15862666893642" y1="-92.99539395999857" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5542635658914729" x1="93.11483158087977" y1="217.48760594385098" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5542635658914729" x1="-65.36289933481567" y1="-134.5622505340364" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5542635658914729" x1="151.88208029865106" y1="14.484190879584967" x2="-181.496140325818" y2="-34.53253785034787"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5474806201550387" x1="28.046581068452156" y1="-162.4976874464688" x2="27.538722191224522" y2="162.84537310933246"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5474806201550387" x1="151.88208029865106" y1="14.484190879584967" x2="177.15862666893642" y2="-92.99539395999857"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5406976744186046" x1="93.11483158087977" y1="217.48760594385098" x2="-139.8573906309547" y2="54.5824557810362"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5406976744186046" x1="93.11483158087977" y1="217.48760594385098" x2="-127.70674134676052" y2="-2.7237184451281973"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5339147286821705" x1="93.11483158087977" y1="217.48760594385098" x2="17.995827233429644" y2="109.86309443930104"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5339147286821705" x1="93.11483158087977" y1="217.48760594385098" x2="86.56084651678448" y2="85.17080949230098"></line><line stroke="rgba(200,168,130,0.15)" stroke-width="0.5339147286821705" x1="93.11483158087977" y1="217.48760594385098" x2="-65.36289933481567" y2="-134.5622505340364"></line></g><g><circle r="32" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="47.519526403971746" cy="-11.473042958869504"></circle><circle r="31.346888407814966" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-17.256047908927336" cy="18.42265154070621"></circle><circle r="30.801351769779707" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-10.931880202241677" cy="-51.41340350640739"></circle><circle r="27.769382288478745" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="38.530943521128094" cy="55.69150617430823"></circle><circle r="27.769382288478745" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-70.71853937893815" cy="-22.14405660119247"></circle><circle r="25.750136331617906" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="79.58235938984141" cy="-68.84881316361788"></circle><circle r="25.137403399554614" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-29.594547188899885" cy="81.7001999382448"></circle><circle r="25.068106599634877" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-66.53814633546631" cy="-82.83599583113974"></circle><circle r="25.0449516346885" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="95.59773420246661" cy="32.30904559985128"></circle><circle r="24.504392252572785" fill="rgb(200, 168, 130)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-78.13791754726827" cy="37.66038390199873"></circle><circle r="23.372887853663798" fill="rgb(183, 155, 122)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="30.38193447709963" cy="-97.87077923749376"></circle><circle r="22.162361588421494" fill="rgb(164, 139, 114)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="17.995827233429644" cy="109.86309443930104"></circle><circle r="22.025273772319984" fill="rgb(162, 138, 113)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-115.84338887638492" cy="-58.25833455139311"></circle><circle r="21.606787035343938" fill="rgb(156, 133, 110)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="119.91729676326736" cy="-26.96997626584997"></circle><circle r="21.263738835475337" fill="rgb(151, 129, 108)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-100.34071245158023" cy="86.6298536918707"></circle><circle r="20.734198510408543" fill="rgb(143, 123, 104)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-20.238502727472156" cy="-110.22876396633497"></circle><circle r="20.58369202592573" fill="rgb(141, 121, 103)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="86.56084651678448" cy="85.17080949230098"></circle><circle r="19.83849400943203" fill="rgb(132, 113, 99)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-127.70674134676052" cy="-2.7237184451281973"></circle><circle r="19.678135246151445" fill="rgb(129, 112, 98)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="95.39723147373404" cy="-119.88380453270814"></circle><circle r="19.450421484849628" fill="rgb(127, 109, 97)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-65.21668089513675" cy="120.3844359409531"></circle><circle r="18.673444203907483" fill="rgb(117, 102, 92)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-65.36289933481567" cy="-134.5622505340364"></circle><circle r="18.6385790918972" fill="rgb(117, 102, 92)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="151.88208029865106" cy="14.484190879584967"></circle><circle r="18.603617533657783" fill="rgb(116, 101, 92)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-139.8573906309547" cy="54.5824557810362"></circle><circle r="18.24851458996455" fill="rgb(112, 98, 90)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="28.046581068452156" cy="-162.4976874464688"></circle><circle r="17.115345871277245" fill="rgb(100, 88, 84)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="27.538722191224522" cy="162.84537310933246"></circle><circle r="16.628303510398" fill="rgb(95, 84, 82)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="-181.496140325818" cy="-34.53253785034787"></circle><circle r="15.89738473249782" fill="rgb(88, 79, 79)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="177.15862666893642" cy="-92.99539395999857"></circle><circle r="14.189657873412719" fill="rgb(73, 67, 72)" stroke="rgba(200,168,130,0.3)" stroke-width="1" cursor="pointer" cx="93.11483158087977" cy="217.48760594385098"></circle></g><g><text class="node-label" dy="-38" x="47.519526403971746" y="-11.473042958869504">minimalist furniture</text><text class="node-label" dy="-37.346888407814966" x="-17.256047908927336" y="18.42265154070621">natural light</text><text class="node-label" dy="-36.80135176977971" x="-10.931880202241677" y="-51.41340350640739">artwork/gallery</text><text class="node-label" dy="-33.769382288478745" x="38.530943521128094" y="55.69150617430823">indoor plants</text><text class="node-label" dy="-33.769382288478745" x="-70.71853937893815" y="-22.14405660119247">neutral palette</text><text class="node-label" dy="-31.750136331617906" x="79.58235938984141" y="-68.84881316361788">tile</text><text class="node-label" dy="-31.137403399554614" x="-29.594547188899885" y="81.7001999382448">white walls</text><text class="node-label" dy="-31.068106599634877" x="-66.53814633546631" y="-82.83599583113974">glass windows</text><text class="node-label" dy="-31.0449516346885" x="95.59773420246661" y="32.30904559985128">concrete</text><text class="node-label" dy="-30.504392252572785" x="-78.13791754726827" y="37.66038390199873">metal fixtures</text><text class="node-label" dy="-29.372887853663798" x="30.38193447709963" y="-97.87077923749376">books/shelving</text><text class="node-label" dy="-28.162361588421494" x="17.995827233429644" y="109.86309443930104">candles/ambiance</text><text class="node-label" dy="-28.025273772319984" x="-115.84338887638492" y="-58.25833455139311">coffee/cafe</text><text class="node-label" dy="-27.606787035343938" x="119.91729676326736" y="-26.96997626584997">exposed brick</text><text class="node-label" dy="-27.263738835475337" x="-100.34071245158023" y="86.6298536918707">throw pillows</text><text class="node-label" dy="-26.734198510408543" x="-20.238502727472156" y="-110.22876396633497">high ceilings</text><text class="node-label" dy="-26.58369202592573" x="86.56084651678448" y="85.17080949230098">pendant lighting</text><text class="node-label" dy="-25.83849400943203" x="-127.70674134676052" y="-2.7237184451281973">wood flooring</text><text class="node-label" dy="-25.678135246151445" x="95.39723147373404" y="-119.88380453270814">marble/stone</text><text class="node-label" dy="-25.450421484849628" x="-65.21668089513675" y="120.3844359409531">sofa/seating</text><text class="node-label" dy="-24.673444203907483" x="-65.36289933481567" y="-134.5622505340364">dining setup</text><text class="node-label" dy="-24.6385790918972" x="151.88208029865106" y="14.484190879584967">kitchen island</text><text class="node-label" dy="-24.603617533657783" x="-139.8573906309547" y="54.5824557810362">open plan</text><text class="node-label" dy="-24.24851458996455" x="28.046581068452156" y="-162.4976874464688">vintage/retro</text><text class="node-label" dy="-23.115345871277245" x="27.538722191224522" y="162.84537310933246">white bedding</text><text class="node-label" dy="-22.628303510398" x="-181.496140325818" y="-34.53253785034787">television</text><text class="node-label" dy="-21.89738473249782" x="177.15862666893642" y="-92.99539395999857">outdoor seating</text></g></g></svg>
+    <div class="network-tooltip" id="network-tooltip"></div>
+  </div>
+</section>
+
+<!-- Annotations section -->
+<section id="sec-annotations" class="viz-section" style="">
+  <div class="section-header">
+    <h2>Image Annotations</h2>
+    <p>VLM-generated annotations for each source image — material elements, lifestyle markers, and spatial composition. Filter by neighborhood and platform to explore the visual vocabulary.</p>
+  </div>
+  <div class="filter-bar" id="ann-filters"><button class="filter-btn active" data-ann-hood="all" style="border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim);">All neighborhoods</button><button class="filter-btn" data-ann-hood="de_pijp" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">De Pijp</button><button class="filter-btn" data-ann-hood="jordaan" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Jordaan</button><button class="filter-btn" data-ann-hood="shoreditch" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Shoreditch</button><button class="filter-btn" data-ann-hood="hackney" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Hackney</button><button class="filter-btn" data-ann-hood="shimokitazawa" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Shimokitazawa</button><button class="filter-btn" data-ann-hood="kiyosumi_shirakawa" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">Kiyosumi-Shirakawa</button><div class="filter-sep"></div><button class="filter-btn active" data-ann-plat="all" style="border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim);">All platforms</button><button class="filter-btn" data-ann-plat="instagram" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">instagram</button><button class="filter-btn" data-ann-plat="airbnb" style="border: 1px solid var(--border); color: var(--text-dim); background: transparent;">airbnb</button></div>
+  <div id="ann-search-wrap" style="max-width:480px;margin:0 auto 24px;position:relative">
+    <input id="ann-search" type="text" placeholder="Search annotations…" style="width:100%;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s ease" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+  </div>
+  <div id="ann-count" style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:20px">1164 of 1164 annotations</div>
+  <div id="ann-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;max-width:1200px;margin:0 auto"><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 593180183681959300</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">red brick residential buildings</span><span class="ann-tag">asphalt pavement and courtyard ground</span><span class="ann-tag">green vegetation and foliage</span><span class="ann-tag">metal railings and fencing</span><span class="ann-tag">vehicle bodies and car paint</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">bicycles parked throughout the courtyard</span><span class="ann-tag">residential vehicles indicating family living</span><span class="ann-tag">street-level retail storefronts</span><span class="ann-tag">casual outdoor gathering space</span><span class="ann-tag">neighborhood community infrastructure</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">enclosed courtyard surrounded by multi-story buildings</span><span class="ann-tag">abundant mature tree canopy providing shade</span><span class="ann-tag">mixed-use ground floor with residential above</span><span class="ann-tag">European urban residential architecture style</span><span class="ann-tag">open sightlines across central shared space</span><span class="ann-tag">natural daylight diffused by overhead foliage</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1048479577090340600</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">light wood flooring</span><span class="ann-tag">beige/cream painted drywall</span><span class="ann-tag">gray upholstered sofa fabric</span><span class="ann-tag">dark wood furniture frame</span><span class="ann-tag">metal window frames</span><span class="ann-tag">concrete/dark flooring accent strip</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted plant visible through window</span><span class="ann-tag">bicycle parked outside</span><span class="ann-tag">parked vehicles on street</span><span class="ann-tag">decorative throw pillows</span><span class="ann-tag">candle or small decorative object on table</span><span class="ann-tag">contemporary urban apartment living</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">tall multi-pane windows providing natural light</span><span class="ann-tag">urban street view overlooking busy neighborhood</span><span class="ann-tag">open floor plan connecting living space</span><span class="ann-tag">minimal window treatments for clean aesthetic</span><span class="ann-tag">warm natural daylight flooding interior</span><span class="ann-tag">modern industrial mixed with residential comfort</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 38455147</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring</span><span class="ann-tag">linen bedding in dark purple/charcoal</span><span class="ann-tag">green upholstered headboard</span><span class="ann-tag">light wood nightstand</span><span class="ann-tag">cream-colored painted doors and trim</span><span class="ann-tag">white plaster walls</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted plants on exterior balcony visible through doors</span><span class="ann-tag">minimalist table lamp on nightstand</span><span class="ann-tag">organized bedroom setup indicating attention to comfort</span><span class="ann-tag">modern upholstered bed frame with button detailing</span><span class="ann-tag">urban apartment setting with street-level views</span><span class="ann-tag">neatly arranged bedding suggesting orderly living habits</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright natural daylight streaming through glass doors</span><span class="ann-tag">minimalist Scandinavian-inspired interior design</span><span class="ann-tag">open, uncluttered bedroom layout</span><span class="ann-tag">balanced symmetrical furniture arrangement</span><span class="ann-tag">neutral color palette with accent green headboard</span><span class="ann-tag">contemporary urban residential space with clean lines</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 788138401782921500</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Red brick facade with detailed masonry work</span><span class="ann-tag">Slate and copper roofing with distinctive mansard towers</span><span class="ann-tag">Large arched stone entrance with ornamental detailing</span><span class="ann-tag">Metal fencing and security barriers at ground level</span><span class="ann-tag">Decorative stone sculptural elements and relief work</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Museum visitors and tourists with casual daywear</span><span class="ann-tag">Bicycles and cyclists indicating urban mobility culture</span><span class="ann-tag">Backpacks and camera equipment among attendees</span><span class="ann-tag">Exhibition banner promoting 'A Nice Day for Night Watch' artwork</span><span class="ann-tag">Visitor information signs and ticket booths indicating cultural institution</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Symmetrical twin tower architecture creating monumental grandeur</span><span class="ann-tag">Open plaza forecourt with multiple entry points and crowd circulation</span><span class="ann-tag">Dramatic arched entrance creating depth and perspective</span><span class="ann-tag">Bright natural daylight with clear blue sky overhead</span><span class="ann-tag">Layered architectural planes from foreground crowds to distant roofline</span><span class="ann-tag">Public gathering space balancing institutional authority with accessibility</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1208573829022197500</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">herringbone wooden parquet flooring</span><span class="ann-tag">cream-colored plaster ceiling with ornamental moldings</span><span class="ann-tag">taupe linen upholstered sofa</span><span class="ann-tag">neutral jute area rug</span><span class="ann-tag">large glass windows with natural light</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted green plants and botanical décor</span><span class="ann-tag">contemporary pendant light fixture</span><span class="ann-tag">neutral throw blanket draped over sofa</span><span class="ann-tag">decorative throw pillows in earth tones</span><span class="ann-tag">minimalist side tables with clean lines</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright, airy living room with high ceilings</span><span class="ann-tag">abundant natural light from street-facing windows</span><span class="ann-tag">symmetrical window arrangement with taupe curtains</span><span class="ann-tag">open floor plan with minimal furniture clustering</span><span class="ann-tag">classical architectural details contrasted with modern furnishings</span><span class="ann-tag">carefully balanced neutral color palette throughout the space</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 2535685</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring</span><span class="ann-tag">white plaster walls</span><span class="ann-tag">gray upholstered bedding</span><span class="ann-tag">brass and metal lamp fixtures</span><span class="ann-tag">linen and cotton textiles</span><span class="ann-tag">dark wood furniture</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">neatly folded white towels on bed</span><span class="ann-tag">decorative patterned throw pillows</span><span class="ann-tag">desk with work area and natural light</span><span class="ann-tag">wine bottle on windowsill</span><span class="ann-tag">organized wall-mounted storage organizer</span><span class="ann-tag">pendant and task lighting setup</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">warm natural sunlight streaming through windows</span><span class="ann-tag">open-plan bedroom with integrated work space</span><span class="ann-tag">high ceilings with pendant lighting</span><span class="ann-tag">neutral color palette with yellow accent textiles</span><span class="ann-tag">industrial-style swag chain lighting</span><span class="ann-tag">balanced furniture arrangement maximizing light and space</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 788241810538290800</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">light wooden flooring</span><span class="ann-tag">soft linen upholstery on sofa</span><span class="ann-tag">green painted accent wall</span><span class="ann-tag">glass windows and glass doors</span><span class="ann-tag">black metal TV stand</span><span class="ann-tag">cream/beige area rug</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted green plant on TV console</span><span class="ann-tag">decorative globe on shelf</span><span class="ann-tag">floral patterned throw pillows</span><span class="ann-tag">gold pendant lamp</span><span class="ann-tag">organized desk accessories</span><span class="ann-tag">mustard-colored throw blanket</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright natural light flooding through floor-to-ceiling windows</span><span class="ann-tag">modern minimalist open-plan layout</span><span class="ann-tag">layered window treatments with sheer and heavy curtains</span><span class="ann-tag">elevated urban view overlooking residential buildings</span><span class="ann-tag">well-organized furniture arrangement with clear zones</span><span class="ann-tag">warm, inviting neutral color palette with green accents</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 49315618</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden laminate flooring</span><span class="ann-tag">cream-colored painted walls</span><span class="ann-tag">dark brown curtains</span><span class="ann-tag">black bed frame</span><span class="ann-tag">cream upholstered dresser</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">framed travel photographs on walls</span><span class="ann-tag">microwave and kitchenware on desk</span><span class="ann-tag">desk with office chair for studying/working</span><span class="ann-tag">decorative round mirror</span><span class="ann-tag">red bedding and throw pillows</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">open floor plan combining sleeping and living areas</span><span class="ann-tag">pendant lighting fixture as focal point</span><span class="ann-tag">neutral area rug defining the central space</span><span class="ann-tag">windows with dark curtains for light control</span><span class="ann-tag">organized multi-functional room layout</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 29272315</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring</span><span class="ann-tag">fabric upholstered sectional sofa</span><span class="ann-tag">wood coffee table</span><span class="ann-tag">ceramic plant pots</span><span class="ann-tag">woven area rug</span><span class="ann-tag">glass windows and curtain rods</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">multiple potted indoor plants</span><span class="ann-tag">framed artwork and prints on walls</span><span class="ann-tag">decorative tripod floor lamp</span><span class="ann-tag">throw pillows with varied patterns</span><span class="ann-tag">woven basket accent piece</span><span class="ann-tag">television entertainment center</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright natural light from large windows</span><span class="ann-tag">open floor plan with garden view</span><span class="ann-tag">layered window treatments with sheer and heavy curtains</span><span class="ann-tag">warm neutral color palette</span><span class="ann-tag">horizontally oriented sectional furniture arrangement</span><span class="ann-tag">lush greenery creating biophilic design elements</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 928201214259691400</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring with natural grain variation</span><span class="ann-tag">black leather sofa with metal legs</span><span class="ann-tag">white exposed ceiling beams</span><span class="ann-tag">grey stone/concrete kitchen cabinetry</span><span class="ann-tag">decorative tree branch wall mural</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted bamboo plant with lush green foliage</span><span class="ann-tag">fresh flowers in dining table centerpiece</span><span class="ann-tag">modern pendant lighting fixtures</span><span class="ann-tag">colorful mid-century dining chairs</span><span class="ann-tag">coffee maker on kitchen counter</span><span class="ann-tag">gold decorative bowl accent piece</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">open-plan living space with seamless flow</span><span class="ann-tag">abundant natural light from skylights and windows</span><span class="ann-tag">minimalist Scandinavian interior design aesthetic</span><span class="ann-tag">high white ceilings creating sense of spaciousness</span><span class="ann-tag">clean, uncluttered horizontal composition</span><span class="ann-tag">integrated kitchen-dining-living zone layout</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 933924657824784900</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring</span><span class="ann-tag">black leather upholstery</span><span class="ann-tag">white painted drywall</span><span class="ann-tag">glass windows with shutters</span><span class="ann-tag">metal frame furniture</span><span class="ann-tag">natural fiber area rug</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted green plant</span><span class="ann-tag">framed abstract artwork</span><span class="ann-tag">flat-screen television</span><span class="ann-tag">table lamp with brass shade</span><span class="ann-tag">decorative throw pillows</span><span class="ann-tag">patterned geometric poufs</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">warm ambient lighting from track lights</span><span class="ann-tag">multi-window natural light source</span><span class="ann-tag">open floor plan layout</span><span class="ann-tag">centered seating arrangement</span><span class="ann-tag">neutral color palette with warm accents</span><span class="ann-tag">balanced furniture placement</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 34592724</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">light wood flooring</span><span class="ann-tag">black leather upholstery</span><span class="ann-tag">brick exterior facade visible through windows</span><span class="ann-tag">natural linen curtains</span><span class="ann-tag">metal window frames</span><span class="ann-tag">wooden dining table</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted plants and indoor greenery</span><span class="ann-tag">decorative throw pillows with geometric patterns</span><span class="ann-tag">woven basket accent piece</span><span class="ann-tag">modern pendant lighting fixture</span><span class="ann-tag">contemporary black chairs</span><span class="ann-tag">curated minimalist aesthetic</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">abundant natural daylight from large windows</span><span class="ann-tag">open-plan living and dining integration</span><span class="ann-tag">high ceilings with clean white walls</span><span class="ann-tag">layered soft neutral curtains creating depth</span><span class="ann-tag">contemporary Scandinavian-influenced design</span><span class="ann-tag">balanced symmetrical window arrangement</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1417256197073739300</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Natural wood dining table</span><span class="ann-tag">White painted walls and ceiling</span><span class="ann-tag">Light gray upholstered furniture</span><span class="ann-tag">Black metal chair frames</span><span class="ann-tag">Glass coffee table top</span><span class="ann-tag">Wooden TV stand</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Potted green plant on coffee table</span><span class="ann-tag">Stack of books on wall shelving</span><span class="ann-tag">Framed artwork and photographs</span><span class="ann-tag">Decorative throw pillows</span><span class="ann-tag">Personal book collection display</span><span class="ann-tag">Laptop and tech devices</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Open-plan living and dining layout</span><span class="ann-tag">Natural light from glass doors</span><span class="ann-tag">Warm accent lighting on left wall</span><span class="ann-tag">Floating black arc lamp overhead</span><span class="ann-tag">Clean minimalist aesthetic</span><span class="ann-tag">High white ceiling with recessed lighting</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 733966572839910900</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring with natural grain finish</span><span class="ann-tag">white cabinetry and built-in units</span><span class="ann-tag">stainless steel appliances</span><span class="ann-tag">light wood dining table</span><span class="ann-tag">cream-colored curtains and soft furnishings</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">fresh flowers in glass vase on dining table</span><span class="ann-tag">potted plant near window sill</span><span class="ann-tag">framed minimalist artwork on wall</span><span class="ann-tag">decorative pendant lighting with exposed bulbs</span><span class="ann-tag">modern upholstered dining chairs in mauve/rose tone</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">open-plan kitchen and dining area layout</span><span class="ann-tag">abundant natural light from large windows</span><span class="ann-tag">warm ambient lighting from recessed and pendant fixtures</span><span class="ann-tag">clean, minimalist design aesthetic</span><span class="ann-tag">uncluttered surfaces promoting spaciousness</span><span class="ann-tag">cohesive warm neutral color palette throughout</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1047202044033614600</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden flooring</span><span class="ann-tag">white painted walls</span><span class="ann-tag">black shelving units</span><span class="ann-tag">brown wooden furniture</span><span class="ann-tag">glass windows with frames</span><span class="ann-tag">white upholstered sofa</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">decorated Christmas tree with red ornaments</span><span class="ann-tag">potted indoor plants on windowsill</span><span class="ann-tag">hanging plant with ivy</span><span class="ann-tag">framed landscape artwork</span><span class="ann-tag">television and media setup</span><span class="ann-tag">stacked books and decorative objects on shelves</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">sage green accent wall</span><span class="ann-tag">recessed ceiling lights</span><span class="ann-tag">large bright windows with night views</span><span class="ann-tag">open floor plan layout</span><span class="ann-tag">warm ambient lighting</span><span class="ann-tag">organized shelving creating vertical storage definition</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 32464492</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Red and brown brick facades</span><span class="ann-tag">Wooden boat hull and cabin structures</span><span class="ann-tag">Water surface (canal)</span><span class="ann-tag">Green ivy and climbing vegetation on buildings</span><span class="ann-tag">Metal railings and fixtures</span><span class="ann-tag">Mansard roofing with dormer windows</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Moored houseboats and barges</span><span class="ann-tag">Bicycles parked along the waterfront</span><span class="ann-tag">Residential canal-side living</span><span class="ann-tag">Historic European architectural preservation</span><span class="ann-tag">Outdoor waterfront gathering spaces</span><span class="ann-tag">Decorative ivy-covered building facades</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Narrow urban canal creating vertical linear perspective</span><span class="ann-tag">Densely packed multi-story buildings framing the water</span><span class="ann-tag">Clear blue sky providing bright, natural illumination</span><span class="ann-tag">Layered depth with boats in foreground and buildings behind</span><span class="ann-tag">Abundant green vegetation softening hard architectural lines</span><span class="ann-tag">Open waterfront plaza contrasting with enclosed building masses</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 23056903</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Gray wood-grain laminate flooring</span><span class="ann-tag">Red brick exterior visible through windows</span><span class="ann-tag">White painted window frames and trim</span><span class="ann-tag">Black metal dining chairs</span><span class="ann-tag">Ceramic flower pots and planters</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Fresh cut flowers in glass vase on dining table</span><span class="ann-tag">Multiple potted plants including Dracaena and dark leafed specimens</span><span class="ann-tag">Round black dining table with modern aesthetic</span><span class="ann-tag">Navy blue pouf ottoman</span><span class="ann-tag">Contemporary geometric black pendant light fixture</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Bright natural light flooding through multi-pane windows</span><span class="ann-tag">Open floor plan connecting living and dining areas</span><span class="ann-tag">Gray linen curtains creating soft window treatments</span><span class="ann-tag">Plant-filled right corner creating vertical greenery accent</span><span class="ann-tag">Minimalist Scandinavian design aesthetic throughout</span><span class="ann-tag">Layered area rugs defining distinct zones</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 797695208525378300</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">light wood flooring</span><span class="ann-tag">beige/taupe upholstered furniture</span><span class="ann-tag">white painted drywall</span><span class="ann-tag">metal staircase railing</span><span class="ann-tag">wooden TV cabinet</span><span class="ann-tag">white coffee table</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted palm plants</span><span class="ann-tag">flat-screen television</span><span class="ann-tag">framed black and white street photography</span><span class="ann-tag">contemporary throw pillows</span><span class="ann-tag">modern pendant lighting</span><span class="ann-tag">decorative red object on shelf</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">open-plan loft layout with mezzanine stairs</span><span class="ann-tag">bright natural skylight illumination</span><span class="ann-tag">minimalist contemporary interior design</span><span class="ann-tag">clean sightlines and uncluttered surfaces</span><span class="ann-tag">neutral warm color palette</span><span class="ann-tag">defined living zone with conversation seating arrangement</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 51218789</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Herringbone wood flooring</span><span class="ann-tag">White painted built-in shelving units</span><span class="ann-tag">Green painted accent wall</span><span class="ann-tag">Gray upholstered sofa</span><span class="ann-tag">Cognac leather ottoman</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Extensive book and media collection on shelves</span><span class="ann-tag">Potted indoor palm plant</span><span class="ann-tag">Framed artwork and photographs</span><span class="ann-tag">Decorative objects and collectibles on display</span><span class="ann-tag">Contemporary area rug with geometric pattern</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Open-plan living area with high ceilings</span><span class="ann-tag">Warm ambient lighting from table lamps</span><span class="ann-tag">Organized minimalist aesthetic with designated storage</span><span class="ann-tag">Natural sight lines across the living space</span><span class="ann-tag">Balanced color scheme of greens, whites, and warm wood tones</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 19845913</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">white painted walls</span><span class="ann-tag">light wooden flooring</span><span class="ann-tag">glass doors and windows</span><span class="ann-tag">metal chair frames</span><span class="ann-tag">ceramic potted plants</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">hanging trailing plants and ferns</span><span class="ann-tag">natural greenery visible through windows</span><span class="ann-tag">minimalist furniture aesthetic</span><span class="ann-tag">decorative wall hangings and artwork</span><span class="ann-tag">warm ambient lighting fixtures</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright natural light from large windows</span><span class="ann-tag">open-plan living and kitchen areas</span><span class="ann-tag">connection to outdoor balcony space</span><span class="ann-tag">clean, uncluttered Scandinavian-inspired layout</span><span class="ann-tag">biophilic design with abundant plant integration</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 12550957</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">natural wood flooring</span><span class="ann-tag">white lacquered cabinetry</span><span class="ann-tag">stainless steel appliances</span><span class="ann-tag">concrete or polished cement countertops</span><span class="ann-tag">glass vase</span><span class="ann-tag">metal pendant lighting fixtures</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">fresh orange flowering branches in vase</span><span class="ann-tag">skateboard leaning against counter</span><span class="ann-tag">bar stools for casual dining</span><span class="ann-tag">wine bottles on floating shelves</span><span class="ann-tag">children's artwork on refrigerator</span><span class="ann-tag">potted trailing plants near windows</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">open-plan kitchen-dining layout</span><span class="ann-tag">abundant natural light from large windows</span><span class="ann-tag">bold orange dome pendant creating focal point</span><span class="ann-tag">high ceilings with modern recessed lighting</span><span class="ann-tag">minimalist modern aesthetic with pops of color</span><span class="ann-tag">kitchen island serving as gathering space</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 51611423</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden hardwood flooring</span><span class="ann-tag">brick exterior building facade</span><span class="ann-tag">white painted drywall</span><span class="ann-tag">gray upholstered fabric sofa</span><span class="ann-tag">metal shelving unit</span><span class="ann-tag">ceramic potted plants</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted houseplants with green foliage</span><span class="ann-tag">striped throw pillows on sofa</span><span class="ann-tag">open shelving with books and decor</span><span class="ann-tag">neutral color palette suggesting minimalist aesthetic</span><span class="ann-tag">natural light from large windows</span><span class="ann-tag">contemporary pendant lighting fixture</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright, natural illumination from multi-pane windows</span><span class="ann-tag">open-plan living and dining area layout</span><span class="ann-tag">high ceilings with industrial black pendant lamp</span><span class="ann-tag">warm, inviting color scheme with cream and sage tones</span><span class="ann-tag">organized vertical storage maximizing small space</span><span class="ann-tag">intimate windowsill plant display with city views</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1501333915425871400</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">beige/cream painted drywall</span><span class="ann-tag">light wood flooring</span><span class="ann-tag">fabric upholstery on seating</span><span class="ann-tag">frosted/semi-transparent window blinds</span><span class="ann-tag">framed artwork with gold matting</span><span class="ann-tag">plush textured area rug</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">minimalist abstract artwork</span><span class="ann-tag">decorative throw pillows with gold accents</span><span class="ann-tag">organized storage baskets</span><span class="ann-tag">natural light positioning near seating</span><span class="ann-tag">curated neutral color palette</span><span class="ann-tag">modern modular furniture arrangement</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">narrow gallery-like room layout</span><span class="ann-tag">abundant natural daylight from large windows</span><span class="ann-tag">contemporary minimalist interior design</span><span class="ann-tag">symmetrical furniture arrangement</span><span class="ann-tag">clean, clutter-free floor space</span><span class="ann-tag">soft diffused lighting through horizontal blinds</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 941916156028641400</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Wooden herringbone flooring</span><span class="ann-tag">Neutral paint with two-tone wall treatment</span><span class="ann-tag">Gray upholstered sofa</span><span class="ann-tag">Wooden dining table</span><span class="ann-tag">Ceramic and terracotta plant pots</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Multiple potted plants and hanging greenery</span><span class="ann-tag">Contemporary portrait artwork</span><span class="ann-tag">Audio speaker system</span><span class="ann-tag">Fresh cut flowers in vases</span><span class="ann-tag">Decorative throw pillows in warm tones</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Open-plan living and dining layout</span><span class="ann-tag">Warm recessed ceiling lighting</span><span class="ann-tag">Soft area rug defining living zone</span><span class="ann-tag">High ceilings with minimalist design</span><span class="ann-tag">Green plant-filled corners creating biophilic atmosphere</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 2497346</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Dark wooden exposed beams</span><span class="ann-tag">White plaster walls</span><span class="ann-tag">Concrete or stone flooring</span><span class="ann-tag">Linen bedding in neutral tones</span><span class="ann-tag">Metal pendant light fixture</span><span class="ann-tag">Glass doors and windows</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Minimalist bedroom aesthetic</span><span class="ann-tag">Boutique hotel or high-end accommodation</span><span class="ann-tag">Contemporary interior design choices</span><span class="ann-tag">Quality bedding and pillows</span><span class="ann-tag">Balcony access with city views</span><span class="ann-tag">Modern lighting fixtures</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Vaulted ceiling with architectural interest</span><span class="ann-tag">Warm golden accent lighting on entrance wall</span><span class="ann-tag">Abundant natural light from French doors</span><span class="ann-tag">Intimate enclosed bed nook</span><span class="ann-tag">Multi-level vertical space utilization</span><span class="ann-tag">Open floor plan transitioning to outdoor balcony</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 21211980</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">natural wood bed frame and furniture</span><span class="ann-tag">white ceramic vase and decor</span><span class="ann-tag">dark wood nightstand with lacquer finish</span><span class="ann-tag">gray textile bedding and pillows</span><span class="ann-tag">dark hardwood flooring</span><span class="ann-tag">ornate red and navy Persian rugs</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">vibrant cut flower arrangement</span><span class="ann-tag">decorative blue and white ceramic plates on wall</span><span class="ann-tag">framed architectural line drawing</span><span class="ann-tag">blue sculptural accent piece on windowsill</span><span class="ann-tag">Asian-inspired decorative cabinet</span><span class="ann-tag">curated art and design objects</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright abundant natural light from large windows</span><span class="ann-tag">minimalist color palette with white walls</span><span class="ann-tag">layered gray window drapery</span><span class="ann-tag">high ceilings with ornamental plaster medallion</span><span class="ann-tag">balanced symmetrical bed placement</span><span class="ann-tag">eclectic global design aesthetic</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 28768768</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Dark green upholstered headboard</span><span class="ann-tag">White cotton bedding and pillows</span><span class="ann-tag">Wooden window frame with light wood finish</span><span class="ann-tag">Cream-colored linen curtains</span><span class="ann-tag">White painted drywall</span><span class="ann-tag">Metal ceiling fixture with brass/gold tone</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Reed diffuser on floating shelf</span><span class="ann-tag">Decorative black cushion with botanical gold print</span><span class="ann-tag">Bedside reading material/magazine</span><span class="ann-tag">Modern pendant light fixture</span><span class="ann-tag">Minimalist home decor aesthetic</span><span class="ann-tag">Plants visible through window suggesting outdoor awareness</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Bright natural daylight streaming through large window</span><span class="ann-tag">Minimal clutter and clean aesthetic</span><span class="ann-tag">High ceilings with recessed lighting</span><span class="ann-tag">Floating shelf above bed for vertical storage</span><span class="ann-tag">Soft afternoon shadows creating depth</span><span class="ann-tag">Open, airy bedroom layout with generous window placement</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 27632457</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">light wood round table</span><span class="ann-tag">wooden laminate flooring</span><span class="ann-tag">metal chair frames with black legs</span><span class="ann-tag">white walls and ceiling</span><span class="ann-tag">glass pendant lights</span><span class="ann-tag">ceramic planter pot</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted plant with pink flower arrangement</span><span class="ann-tag">modern minimalist clock on wall</span><span class="ann-tag">colorful designer chairs in red, yellow, and black</span><span class="ann-tag">contemporary pendant light fixtures</span><span class="ann-tag">gray upholstered sofa in background</span><span class="ann-tag">decorative throw pillow</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright, naturally lit open space</span><span class="ann-tag">minimalist interior design aesthetic</span><span class="ann-tag">central round table focal point</span><span class="ann-tag">multi-level ceiling with recessed lighting</span><span class="ann-tag">clean white walls creating spacious feel</span><span class="ann-tag">organized layout with defined seating arrangement</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 1286795087898038500</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">wooden parquet flooring</span><span class="ann-tag">cream-colored upholstered fabric sofa</span><span class="ann-tag">woven jute area rug</span><span class="ann-tag">natural wood furniture</span><span class="ann-tag">brick exterior visible through windows</span><span class="ann-tag">white window frames and trim</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">potted fiddle leaf fig plant in white ceramic planter</span><span class="ann-tag">framed botanical prints on wall</span><span class="ann-tag">round wooden coffee table with decorative objects</span><span class="ann-tag">table lamp with warm ambient lighting</span><span class="ann-tag">purple vase with fresh flowers</span><span class="ann-tag">beige linen curtains</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">bright natural light from large corner windows</span><span class="ann-tag">warm neutral color palette throughout</span><span class="ann-tag">open floor plan with organized furniture arrangement</span><span class="ann-tag">minimalist contemporary design aesthetic</span><span class="ann-tag">layered warm artificial lighting from ceiling and table lamp</span><span class="ann-tag">elevated urban apartment setting overlooking city streets</span></div>
+      </div><div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:#d4886a">De Pijp</span>
+          <span class="ann-platform">airbnb · 4591819</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags"><span class="ann-tag">Striped textile bedding with red, orange, black, and blue woven patterns</span><span class="ann-tag">White cotton pillowcase and sheet</span><span class="ann-tag">Sage green painted wall</span><span class="ann-tag">Natural wood frame for artwork</span><span class="ann-tag">White painted wooden doors and trim</span></div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags"><span class="ann-tag">Framed abstract architectural photograph above bed</span><span class="ann-tag">White towel draped on bedside rail</span><span class="ann-tag">Small decorative object on wall shelf</span><span class="ann-tag">Wall-mounted electrical outlets and switches</span><span class="ann-tag">Minimalist bedroom décor suggesting organized, curated aesthetic</span></div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags"><span class="ann-tag">Symmetrical headboard arrangement with centered artwork</span><span class="ann-tag">Bright, natural window lighting illuminating the bed</span><span class="ann-tag">Dual doors flanking the bed creating balanced visual composition</span><span class="ann-tag">Muted color palette with accent colors in textiles</span><span class="ann-tag">Clean, uncluttered bedroom layout with calm, restful atmosphere</span></div>
+      </div></div>
+  <div id="ann-more-wrap" style="text-align:center;margin-top:24px"><button style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 10px 24px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: 0.2s;">Show more (1134 remaining)</button></div>
+</section>
+
+<!-- Footer -->
+<footer class="site-footer" id="footer" style="">
+  Aesthetic Cartography — Master Thesis Visualization<br>
+  Media Studies, University of Amsterdam, 2026<br>
+  Data: <a href="https://insideairbnb.com" target="_blank">InsideAirbnb</a> + Instagram via Zeeschuimer
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const HOOD_COLORS = {
+  de_pijp:            '#d4886a',
+  jordaan:            '#d4a76a',
+  shoreditch:         '#7aa3c8',
+  hackney:            '#6a98b8',
+  shimokitazawa:      '#a8c87a',
+  kiyosumi_shirakawa: '#7ac896',
+};
+const HOOD_LABELS = {
+  de_pijp:            'De Pijp',
+  jordaan:            'Jordaan',
+  shoreditch:         'Shoreditch',
+  hackney:            'Hackney',
+  shimokitazawa:      'Shimokitazawa',
+  kiyosumi_shirakawa: 'Kiyosumi-Shirakawa',
+};
+
+let galaxyData = null, networkData = null, annotationsData = null;
+
+// ── Progress bar ───────────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  document.getElementById('load-bar').style.width = pct + '%';
+  document.getElementById('load-label').textContent = label;
+}
+
+// ── Nav tabs ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.viz-section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.target;
+    const sec = document.getElementById('sec-' + target);
+    if (sec) sec.classList.add('active');
+    localStorage.setItem('ac_tab', target);
+  });
+});
+
+// ── Restore tab ───────────────────────────────────────────────────────────
+const savedTab = localStorage.getItem('ac_tab');
+if (savedTab) {
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.target === savedTab);
+  });
+  document.querySelectorAll('.viz-section').forEach(s => {
+    s.classList.toggle('active', s.id === 'sec-' + savedTab);
+  });
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────
+async function init() {
+  setProgress(10, 'Loading galaxy data…');
+  galaxyData = await fetch(window.__resources.galaxyData).then(r => r.json());
+  setProgress(55, 'Loading network data…');
+  networkData = await fetch(window.__resources.networkData).then(r => r.json());
+  setProgress(70, 'Loading annotations…');
+  const [abAnns, igAnns] = await Promise.all([
+    fetch(window.__resources.airbnbAnns).then(r => r.json()),
+    fetch(window.__resources.instagramAnns).then(r => r.json()),
+  ]);
+  annotationsData = [...abAnns, ...igAnns];
+  setProgress(85, 'Rendering…');
+
+  // Hero stats
+  const pts = galaxyData.points;
+  const hoods = galaxyData.neighborhoods;
+  const totalImages = networkData.total_images || pts.length;
+  document.getElementById('hero-sub').textContent =
+    `Mapping the visual language of gentrification across Amsterdam, London, and Tokyo — through ${totalImages.toLocaleString()} Airbnb and Instagram images, annotated by vision-language models and projected into shared aesthetic space.`;
+
+  const statsEl = document.getElementById('hero-stats');
+  statsEl.innerHTML = '';
+  [
+    { val: (networkData.total_images || pts.length).toLocaleString(), lbl: 'Images analysed' },
+    { val: hoods.length, lbl: 'Neighborhoods' },
+    { val: networkData.nodes.length, lbl: 'Visual markers' },
+    { val: '3', lbl: 'Cities' },
+  ].forEach(s => {
+    statsEl.innerHTML += `<div><div class="hero-stat-val">${s.val}</div><div class="hero-stat-label">${s.lbl}</div></div>`;
+  });
+
+  setProgress(100, 'Ready');
+  await new Promise(r => setTimeout(r, 400));
+
+  // Reveal UI
+  document.getElementById('loading').style.opacity = '0';
+  document.getElementById('loading').style.transition = 'opacity 0.5s ease';
+  setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+
+  ['hero','main-nav','sec-galaxy','sec-network','sec-annotations','footer'].forEach(id => {
+    document.getElementById(id).style.display = '';
+  });
+
+  initGalaxy();
+  initAnnotations();
+  initNetwork();
+}
+
+// ══════════════════════════════════════════
+//  GALAXY VIEW
+// ══════════════════════════════════════════
+function initGalaxy() {
+  const container = document.getElementById('galaxy-container');
+  const canvas = document.getElementById('galaxy-canvas');
+  const ctx = canvas.getContext('2d');
+  const tooltip = document.getElementById('galaxy-tooltip');
+  const points = galaxyData.points;
+  const allHoods = galaxyData.neighborhoods;
+
+  let activeHoods = new Set(allHoods);
+  let activePlatforms = new Set(['instagram', 'airbnb']);
+
+  const filtersEl = document.getElementById('galaxy-filters');
+  filtersEl.innerHTML = '';
+
+  // Platform filters
+  ['all', 'instagram', 'airbnb'].forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (p === 'all' ? ' active' : '');
+    btn.textContent = p === 'all' ? 'All platforms' : p;
+    btn.style.cssText = `border: 1px solid ${p === 'all' ? 'var(--accent)' : 'var(--border)'}; color: ${p === 'all' ? 'var(--accent)' : 'var(--text-dim)'}; background: ${p === 'all' ? 'var(--accent-dim)' : 'transparent'}`;
+    btn.dataset.platform = p;
+    btn.addEventListener('click', () => {
+      filtersEl.querySelectorAll('[data-platform]').forEach(b => {
+        b.classList.remove('active');
+        b.style.cssText = `border: 1px solid var(--border); color: var(--text-dim); background: transparent`;
+      });
+      btn.classList.add('active');
+      btn.style.cssText = `border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim)`;
+      activePlatforms = p === 'all' ? new Set(['instagram', 'airbnb']) : new Set([p]);
+      draw();
+    });
+    filtersEl.appendChild(btn);
+  });
+
+  const sep = document.createElement('div');
+  sep.className = 'filter-sep';
+  filtersEl.appendChild(sep);
+
+  // Hood filters
+  allHoods.forEach(h => {
+    const color = HOOD_COLORS[h];
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn active';
+    btn.textContent = HOOD_LABELS[h] || h;
+    btn.style.cssText = `border: 1px solid ${color}; color: ${color}; background: ${color}26`;
+    btn.dataset.hood = h;
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('active');
+      if (btn.classList.contains('active')) {
+        activeHoods.add(h);
+        btn.style.cssText = `border: 1px solid ${color}; color: ${color}; background: ${color}26`;
+      } else {
+        activeHoods.delete(h);
+        btn.style.cssText = `border: 1px solid var(--border); color: var(--text-dim); background: transparent`;
+      }
+      draw();
+    });
+    filtersEl.appendChild(btn);
+  });
+
+  // Legend
+  const legendEl = document.getElementById('galaxy-legend');
+  legendEl.innerHTML = '';
+  allHoods.forEach(h => {
+    const item = document.createElement('div');
+    item.className = 'galaxy-legend-item';
+    item.innerHTML = `<span class="legend-dot" style="background:${HOOD_COLORS[h]}"></span>${HOOD_LABELS[h] || h}`;
+    legendEl.appendChild(item);
+  });
+
+  function hexToRgb(hex) {
+    return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+  }
+
+  function resize() {
+    const rect = container.getBoundingClientRect();
+    const dpr = devicePixelRatio;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function draw() {
+    const w = canvas.width / devicePixelRatio;
+    const h = canvas.height / devicePixelRatio;
+    const pad = 40;
+    ctx.clearRect(0, 0, w, h);
+    points.forEach(p => {
+      if (!activeHoods.has(p.neighborhood) || !activePlatforms.has(p.platform)) return;
+      const x = pad + p.x * (w - 2*pad);
+      const y = pad + p.y * (h - 2*pad);
+      const [r,g,b] = hexToRgb(HOOD_COLORS[p.neighborhood] || '#888888');
+      const alpha = p.platform === 'instagram' ? 0.85 : 0.35;
+      const radius = p.platform === 'instagram' ? 3.5 : 2.8;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+      ctx.fill();
+    });
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const w = rect.width, h = rect.height, pad = 40;
+    let closest = null, closestDist = Infinity;
+    points.forEach(p => {
+      if (!activeHoods.has(p.neighborhood) || !activePlatforms.has(p.platform)) return;
+      const x = pad + p.x * (w - 2*pad);
+      const y = pad + p.y * (h - 2*pad);
+      const d = Math.hypot(x-mx, y-my);
+      if (d < closestDist && d < 20) { closestDist = d; closest = { ...p, sx:x, sy:y }; }
+    });
+    if (closest) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 16) + 'px';
+      tooltip.style.top = (e.clientY - 10) + 'px';
+      tooltip.querySelector('.tt-hood').textContent = HOOD_LABELS[closest.neighborhood] || closest.neighborhood;
+      tooltip.querySelector('.tt-hood').style.color = HOOD_COLORS[closest.neighborhood];
+      tooltip.querySelector('.tt-platform').textContent = closest.platform;
+      const markerText = closest.markers.length
+        ? closest.markers.join(' · ')
+        : 'no markers';
+      tooltip.querySelector('.tt-markers').textContent = closest.inferred
+        ? '≈ ' + markerText
+        : markerText;
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
+  canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  window.addEventListener('resize', resize);
+  resize();
+}
+
+// ══════════════════════════════════════════
+//  NETWORK VIEW
+// ══════════════════════════════════════════
+function initNetwork() {
+  const container = document.getElementById('network-container');
+  const svgEl = document.getElementById('network-svg');
+  const tooltip = document.getElementById('network-tooltip');
+  const rect = container.getBoundingClientRect();
+  const width = rect.width, height = rect.height;
+
+  svgEl.innerHTML = '';
+  const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
+  const nodes = networkData.nodes.map(d => ({ ...d }));
+  const edges = networkData.edges.map(d => ({ ...d }));
+
+  const filtersEl = document.getElementById('network-filters');
+  let filterHood = localStorage.getItem('ac_network_hood') || 'all';
+  filtersEl.innerHTML = '';
+
+  const maxFreq = d3.max(nodes, d => d.freq);
+  const rScale = d3.scaleSqrt().domain([0, maxFreq]).range([6, 32]);
+  const maxWeight = d3.max(edges, d => d.weight);
+  const wScale = d3.scaleLinear().domain([0, maxWeight]).range([0.5, 4]);
+
+  // Build filters
+  const filterHoods = ['all', ...networkData.neighborhoods];
+  filterHoods.forEach(h => {
+    const isAll = h === 'all';
+    const color = !isAll ? HOOD_COLORS[h] : null;
+    const isActive = filterHood === h;
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (isActive ? ' active' : '');
+    btn.textContent = isAll ? 'All neighborhoods' : HOOD_LABELS[h] || h;
+    btn.style.cssText = isActive
+      ? `border: 1px solid ${color || 'var(--accent)'}; color: ${color || 'var(--accent)'}; background: ${color ? color + '26' : 'var(--accent-dim)'}`
+      : `border: 1px solid var(--border); color: var(--text-dim); background: transparent`;
+    btn.dataset.hood = h;
+    btn.addEventListener('click', () => {
+      filtersEl.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.cssText = `border: 1px solid var(--border); color: var(--text-dim); background: transparent`;
+      });
+      btn.classList.add('active');
+      const c = !isAll ? HOOD_COLORS[h] : null;
+      btn.style.cssText = `border: 1px solid ${c || 'var(--accent)'}; color: ${c || 'var(--accent)'}; background: ${c ? c+'26' : 'var(--accent-dim)'}`;
+      filterHood = h;
+      localStorage.setItem('ac_network_hood', h);
+      updateNetwork();
+    });
+    filtersEl.appendChild(btn);
+  });
+
+  const g = svg.append('g');
+  const zoom = d3.zoom().scaleExtent([0.3, 4])
+    .on('zoom', (e) => g.attr('transform', e.transform));
+  svg.call(zoom);
+
+  const linkGroup = g.append('g');
+  const nodeGroup = g.append('g');
+  const labelGroup = g.append('g');
+
+  let linkEls, nodeEls, labelEls;
+
+  const simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d => d.id).distance(100).strength(d => d.weight / maxWeight * 0.3))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collision', d3.forceCollide().radius(d => rScale(d.freq) + 4));
+
+  function renderNetwork(fn, fe) {
+    linkGroup.selectAll('line').remove();
+    linkEls = linkGroup.selectAll('line').data(fe).join('line')
+      .attr('stroke', 'rgba(200,168,130,0.15)')
+      .attr('stroke-width', d => wScale(d.weight));
+
+    nodeGroup.selectAll('circle').remove();
+    nodeEls = nodeGroup.selectAll('circle').data(fn, d => d.id).join('circle')
+      .attr('r', d => rScale(d._freq || d.freq))
+      .attr('fill', d => {
+        const f = d._freq || d.freq;
+        return d3.interpolateRgb('#2a2a3a', '#c8a882')(Math.min(f / maxFreq * 2, 1));
+      })
+      .attr('stroke', 'rgba(200,168,130,0.3)').attr('stroke-width', 1)
+      .attr('cursor', 'pointer')
+      .call(d3.drag()
+        .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+        .on('drag', (e, d) => { d.fx=e.x; d.fy=e.y; })
+        .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; })
+      )
+      .on('mouseenter', (e, d) => {
+        const cr = container.getBoundingClientRect();
+        const f = d._freq || d.freq;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.clientX - cr.left + 16) + 'px';
+        tooltip.style.top = (e.clientY - cr.top - 10) + 'px';
+        tooltip.innerHTML = `
+          <div style="color:var(--accent);font-weight:500;margin-bottom:4px">${d.id}</div>
+          <div style="color:var(--text-dim)">Appears in ${f} images${filterHood !== 'all' ? ' (filtered)' : ''}</div>
+          <div style="color:var(--text-muted);font-size:10px;font-family:'JetBrains Mono',monospace;margin-top:4px">IG: ${d.freq_ig} · Airbnb: ${d.freq_ab}</div>`;
+      })
+      .on('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    labelGroup.selectAll('text').remove();
+    labelEls = labelGroup.selectAll('text')
+      .data(fn.filter(d => (d._freq || d.freq) > maxFreq * 0.12), d => d.id)
+      .join('text').attr('class', 'node-label')
+      .attr('dy', d => -rScale(d._freq || d.freq) - 6)
+      .text(d => d.id);
+  }
+
+  function updateNetwork() {
+    let fn = nodes, fe = edges;
+    if (filterHood !== 'all') {
+      const hoodFreq = networkData.hood_marker_freq[filterHood] || {};
+      fn = nodes.filter(d => (hoodFreq[d.id] || 0) > 0);
+      fn.forEach(d => { d._freq = hoodFreq[d.id]; });
+      const fnIds = new Set(fn.map(d => d.id));
+      fe = edges.filter(d => fnIds.has(d.source.id || d.source) && fnIds.has(d.target.id || d.target));
+    } else {
+      nodes.forEach(d => { d._freq = null; });
+    }
+    renderNetwork(fn, fe);
+    simulation.nodes(fn);
+    simulation.force('link').links(fe);
+    simulation.alpha(0.8).restart();
+  }
+
+  simulation.on('tick', () => {
+    if (linkEls) linkEls
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    if (nodeEls) nodeEls.attr('cx', d => d.x).attr('cy', d => d.y);
+    if (labelEls) labelEls.attr('x', d => d.x).attr('y', d => d.y);
+  });
+
+  updateNetwork();
+}
+
+// ══════════════════════════════════════════
+//  ANNOTATIONS PANEL
+// ══════════════════════════════════════════
+function initAnnotations() {
+  const filtersEl = document.getElementById('ann-filters');
+  filtersEl.innerHTML = '';
+  const searchEl = document.getElementById('ann-search');
+  const gridEl = document.getElementById('ann-grid');
+  const countEl = document.getElementById('ann-count');
+  const moreWrap = document.getElementById('ann-more-wrap');
+
+  let filterHood = 'all';
+  let filterPlatform = 'all';
+  let searchQuery = '';
+  let pageSize = 30;
+  let showing = pageSize;
+
+  // Build hood filters
+  const hoodBtns = ['all', ...Object.keys(HOOD_LABELS)];
+  hoodBtns.forEach(h => {
+    const isAll = h === 'all';
+    const color = !isAll ? HOOD_COLORS[h] : null;
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (h === 'all' ? ' active' : '');
+    btn.textContent = isAll ? 'All neighborhoods' : HOOD_LABELS[h];
+    btn.style.cssText = h === 'all'
+      ? 'border:1px solid var(--accent);color:var(--accent);background:var(--accent-dim)'
+      : 'border:1px solid var(--border);color:var(--text-dim);background:transparent';
+    btn.addEventListener('click', () => {
+      filtersEl.querySelectorAll('[data-ann-hood]').forEach(b => {
+        b.style.cssText = 'border:1px solid var(--border);color:var(--text-dim);background:transparent';
+      });
+      const c = !isAll ? HOOD_COLORS[h] : null;
+      btn.style.cssText = `border:1px solid ${c||'var(--accent)'};color:${c||'var(--accent)'};background:${c?c+'26':'var(--accent-dim)'}`;
+      filterHood = h;
+      showing = pageSize;
+      render();
+    });
+    btn.dataset.annHood = h;
+    filtersEl.appendChild(btn);
+  });
+
+  // Separator
+  const sep = document.createElement('div');
+  sep.className = 'filter-sep';
+  filtersEl.appendChild(sep);
+
+  // Platform filters
+  ['all', 'instagram', 'airbnb'].forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (p === 'all' ? ' active' : '');
+    btn.textContent = p === 'all' ? 'All platforms' : p;
+    btn.style.cssText = p === 'all'
+      ? 'border:1px solid var(--accent);color:var(--accent);background:var(--accent-dim)'
+      : 'border:1px solid var(--border);color:var(--text-dim);background:transparent';
+    btn.addEventListener('click', () => {
+      filtersEl.querySelectorAll('[data-ann-plat]').forEach(b => {
+        b.style.cssText = 'border:1px solid var(--border);color:var(--text-dim);background:transparent';
+      });
+      btn.style.cssText = 'border:1px solid var(--accent);color:var(--accent);background:var(--accent-dim)';
+      filterPlatform = p;
+      showing = pageSize;
+      render();
+    });
+    btn.dataset.annPlat = p;
+    filtersEl.appendChild(btn);
+  });
+
+  // Search
+  let searchTimer;
+  searchEl.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = searchEl.value.trim().toLowerCase();
+      showing = pageSize;
+      render();
+    }, 200);
+  });
+
+  function getFiltered() {
+    return annotationsData.filter(a => {
+      if (filterHood !== 'all' && a.neighborhood !== filterHood) return false;
+      if (filterPlatform !== 'all' && a.platform !== filterPlatform) return false;
+      if (searchQuery) {
+        const all = [
+          ...a.material_elements,
+          ...a.lifestyle_markers,
+          ...a.spatial_composition,
+        ].join(' ').toLowerCase();
+        if (!all.includes(searchQuery)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderTags(items, category) {
+    return items.map(t => {
+      const isMatch = searchQuery && t.toLowerCase().includes(searchQuery);
+      return `<span class="ann-tag${isMatch ? ' highlight' : ''}">${t}</span>`;
+    }).join('');
+  }
+
+  function render() {
+    const filtered = getFiltered();
+    const slice = filtered.slice(0, showing);
+    countEl.textContent = `${filtered.length} of ${annotationsData.length} annotations`;
+
+    gridEl.innerHTML = slice.map(a => {
+      const hoodColor = HOOD_COLORS[a.neighborhood] || '#888';
+      const hoodLabel = HOOD_LABELS[a.neighborhood] || a.neighborhood;
+      const id = a.listing_id || a.post_id || '';
+      return `<div class="ann-card">
+        <div class="ann-card-header">
+          <span class="ann-hood" style="color:${hoodColor}">${hoodLabel}</span>
+          <span class="ann-platform">${a.platform}${id ? ' · ' + id : ''}</span>
+        </div>
+        <div class="ann-section-label">Material elements</div>
+        <div class="ann-tags">${renderTags(a.material_elements, 'material')}</div>
+        <div class="ann-section-label">Lifestyle markers</div>
+        <div class="ann-tags">${renderTags(a.lifestyle_markers, 'lifestyle')}</div>
+        <div class="ann-section-label">Spatial composition</div>
+        <div class="ann-tags">${renderTags(a.spatial_composition, 'spatial')}</div>
+      </div>`;
+    }).join('');
+
+    // Load more button
+    moreWrap.innerHTML = '';
+    if (showing < filtered.length) {
+      const btn = document.createElement('button');
+      btn.textContent = `Show more (${filtered.length - showing} remaining)`;
+      btn.style.cssText = `font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:10px 24px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.2s ease`;
+      btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text-dim)'; });
+      btn.addEventListener('click', () => { showing += pageSize; render(); });
+      moreWrap.appendChild(btn);
+    }
+  }
+
+  render();
+}
+
+init().catch(console.error);
+
+// ══════════════════════════════════════════
+//  TWEAKS
+// ══════════════════════════════════════════
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#c8a882",
+  "bgColor": "#0a0a0f",
+  "surfaceColor": "#13131a",
+  "pointSize": 3.5,
+  "galaxyPointOpacity": 0.85,
+  "annotationColumns": 3,
+  "showHeroStats": true
+}/*EDITMODE-END*/;
+
+let tweakState = { ...TWEAK_DEFAULTS };
+
+function applyTweaks(t) {
+  document.documentElement.style.setProperty('--accent', t.accentColor);
+  document.documentElement.style.setProperty('--accent-dim', t.accentColor + '26');
+  document.documentElement.style.setProperty('--bg', t.bgColor);
+  document.documentElement.style.setProperty('--surface', t.surfaceColor);
+  document.body.style.background = t.bgColor;
+
+  const grid = document.getElementById('ann-grid');
+  if (grid) grid.style.gridTemplateColumns = `repeat(auto-fill,minmax(${Math.round(1200/t.annotationColumns) - 20}px,1fr))`;
+
+  const statsEl = document.getElementById('hero-stats');
+  if (statsEl) statsEl.style.display = t.showHeroStats ? 'flex' : 'none';
+}
+
+applyTweaks(tweakState);
+
+// Tweaks panel
+const tweakPanel = document.createElement('div');
+tweakPanel.id = 'tweak-panel';
+tweakPanel.style.cssText = `
+  position:fixed;bottom:16px;right:16px;z-index:9999;
+  background:rgba(19,19,26,0.97);border:1px solid #2a2a3a;border-radius:12px;
+  padding:20px;width:280px;font-family:'DM Sans',sans-serif;
+  backdrop-filter:blur(16px);display:none;color:#e8e6e3;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+`;
+
+function makeRow(label, input) {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;';
+  const lbl = document.createElement('span');
+  lbl.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8a8898;";
+  lbl.textContent = label;
+  row.appendChild(lbl);
+  row.appendChild(input);
+  return row;
+}
+
+function colorInput(key) {
+  const inp = document.createElement('input');
+  inp.type = 'color'; inp.value = tweakState[key];
+  inp.style.cssText = 'width:32px;height:24px;border:1px solid #2a2a3a;border-radius:4px;background:none;cursor:pointer;padding:0;';
+  inp.addEventListener('input', () => { tweakState[key] = inp.value; applyTweaks(tweakState); postTweaks(); });
+  return inp;
+}
+
+function sliderInput(key, min, max, step) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = tweakState[key];
+  inp.style.cssText = 'width:100px;accent-color:#c8a882;';
+  const val = document.createElement('span');
+  val.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:10px;color:#8a8898;min-width:24px;text-align:right;";
+  val.textContent = tweakState[key];
+  inp.addEventListener('input', () => { tweakState[key] = parseFloat(inp.value); val.textContent = inp.value; applyTweaks(tweakState); postTweaks(); });
+  wrap.appendChild(inp); wrap.appendChild(val);
+  return wrap;
+}
+
+function toggleInput(key) {
+  const btn = document.createElement('button');
+  btn.style.cssText = `width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;position:relative;transition:background 0.2s;background:${tweakState[key]?'#c8a882':'#2a2a3a'}`;
+  const dot = document.createElement('div');
+  dot.style.cssText = `width:16px;height:16px;border-radius:50%;background:#e8e6e3;position:absolute;top:3px;transition:left 0.2s;left:${tweakState[key]?'21px':'3px'}`;
+  btn.appendChild(dot);
+  btn.addEventListener('click', () => {
+    tweakState[key] = !tweakState[key];
+    btn.style.background = tweakState[key] ? '#c8a882' : '#2a2a3a';
+    dot.style.left = tweakState[key] ? '21px' : '3px';
+    applyTweaks(tweakState); postTweaks();
+  });
+  return btn;
+}
+
+const title = document.createElement('div');
+title.style.cssText = "font-family:'Playfair Display',serif;font-size:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #2a2a3a;";
+title.textContent = 'Tweaks';
+tweakPanel.appendChild(title);
+tweakPanel.appendChild(makeRow('Accent', colorInput('accentColor')));
+tweakPanel.appendChild(makeRow('Background', colorInput('bgColor')));
+tweakPanel.appendChild(makeRow('Surface', colorInput('surfaceColor')));
+tweakPanel.appendChild(makeRow('Point size', sliderInput('pointSize', 1, 8, 0.5)));
+tweakPanel.appendChild(makeRow('Point opacity', sliderInput('galaxyPointOpacity', 0.1, 1, 0.05)));
+tweakPanel.appendChild(makeRow('Ann. columns', sliderInput('annotationColumns', 1, 5, 1)));
+tweakPanel.appendChild(makeRow('Hero stats', toggleInput('showHeroStats')));
+
+document.body.appendChild(tweakPanel);
+
+function postTweaks() {
+  window.parent.postMessage({ type: '__edit_mode_set_keys', edits: tweakState }, '*');
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === '__activate_edit_mode') tweakPanel.style.display = 'block';
+  if (e.data?.type === '__deactivate_edit_mode') tweakPanel.style.display = 'none';
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+</script>
+
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"></grammarly-desktop-integration></html>

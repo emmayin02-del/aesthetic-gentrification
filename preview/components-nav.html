@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;padding:20px}
+.nav{display:flex;justify-content:center;background:rgba(10,10,15,0.92);backdrop-filter:blur(12px);border-bottom:1px solid #2a2a3a;border-radius:8px 8px 0 0}
+.tab{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5868;padding:18px 32px;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:all 0.3s ease}
+.tab:hover{color:#8a8898}
+.tab.active{color:#c8a882;border-bottom-color:#c8a882}
+.label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#5a5868;margin-top:16px;margin-bottom:6px}
+.states{display:flex;gap:0;background:#13131a;border:1px solid #2a2a3a;border-radius:0 0 8px 8px;overflow:hidden}
+.state{padding:12px 20px;border-right:1px solid #2a2a3a;display:flex;flex-direction:column;gap:4px}
+.state:last-child{border-right:none}
+.state-name{font-family:'JetBrains Mono',monospace;font-size:9px;color:#5a5868}
+</style></head><body>
+<nav class="nav">
+  <button class="tab active">Galaxy View</button>
+  <button class="tab">Marker Network</button>
+</nav>
+<div class="states">
+  <div class="state"><div class="state-name">Default</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5868">Tab Label</div></div>
+  <div class="state"><div class="state-name">Hover</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a8898">Tab Label</div></div>
+  <div class="state"><div class="state-name">Active</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c8a882;border-bottom:2px solid #c8a882;padding-bottom:2px">Tab Label</div></div>
+</div>
+</body></html>
